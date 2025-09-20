@@ -82,7 +82,7 @@
                             <label class="block text-sm font-medium text-gray-700">Gamemode:</label>
                             <span id="gamemodeDisplay" class="text-gray-900"></span>
                             <select id="gamemodeSelect" class="hidden w-full px-2 py-1 border border-gray-300 rounded-md">
-                                <option value="normal">Classic</option>
+                                <option value="classic">Classic</option>
                                 <option value="inverted">Inverted</option>
                             </select>
                         </div>
@@ -131,7 +131,7 @@
         let playerName = null;
         let isRoomCreator = false;
         let roomCreator = null;
-        let currentSettings = {time_limit: 20, gamemode: 'normal'};
+        let currentSettings = {time_limit: 20, gamemode: 'classic'};
 
         // Generate random room code
         function generateRoomCode() {
@@ -290,7 +290,7 @@
         });
 
         socket.on('game_started', function(data) {
-            const gamemode = data.settings ? data.settings.gamemode : 'normal';
+            const gamemode = data.settings ? data.settings.gamemode : 'classic';
             const gameUrl = gamemode === 'inverted' ? `/inverted-game/${currentRoom}` : `/game/${currentRoom}`;
             window.location.href = `${gameUrl}?player=${encodeURIComponent(playerName)}`;
         });

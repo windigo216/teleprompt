@@ -205,7 +205,7 @@ def handle_join_room(data):
             return
         rooms[room_code] = []
         room_creators[room_code] = player_name
-        room_settings[room_code] = {'time_limit': 20, 'gamemode': 'normal'}
+        room_settings[room_code] = {'time_limit': 20, 'gamemode': 'classic'}
     
     if len(rooms[room_code]) >= MIN_PLAYERS and not any(p['name'] == player_name for p in rooms[room_code]):
         emit('room_full', {'message': 'Room is full'})
@@ -358,8 +358,8 @@ def start_game(room_code):
     """Initialize and start a new game"""
     players = rooms[room_code]
     game_id = str(uuid.uuid4())
-    settings = room_settings.get(room_code, {'time_limit': 20, 'gamemode': 'normal'})
-    gamemode = settings.get('gamemode', 'normal')
+    settings = room_settings.get(room_code, {'time_limit': 20, 'gamemode': 'classic'})
+    gamemode = settings.get('gamemode', 'classic')
     
     if gamemode == 'inverted':
         # For inverted mode, provide a starting prompt for the first player to draw
@@ -393,7 +393,7 @@ def start_game(room_code):
         emit('game_started', game_started_data, room=room_code)
         print(f"game_started event emitted to room {room_code}")
     else:
-        # Normal mode - use stock1.svg for player 1
+        # Classic mode - use stock1.svg for player 1
         starting_image = f'static/img/starting-img.png'
         
         games[room_code] = {
@@ -406,7 +406,7 @@ def start_game(room_code):
             'status': 'waiting_for_prompt',
             'start_time': time.time(),
             'round_start_time': time.time(),
-            'gamemode': 'normal'
+            'gamemode': 'classic'
         }
         
         # Send game_started event to all players in the room
@@ -769,7 +769,7 @@ def handle_disconnect():
                 'players': [p['name'] for p in rooms[room_code]],
                 'ready_to_start': len(rooms[room_code]) >= MIN_PLAYERS,
                 'creator': room_creators.get(room_code),
-                'settings': room_settings.get(room_code, {'time_limit': 20, 'gamemode': 'normal'})
+                'settings': room_settings.get(room_code, {'time_limit': 20, 'gamemode': 'classic'})
             }, room=room_code)
 
 @socketio.on('get_game_state')
@@ -786,7 +786,7 @@ def handle_get_game_state(data):
     
     game = games[room_code]
     current_player = game['players'][game['current_player']]['name']
-    print(f"🎮 Game found: {game.get('gamemode', 'normal')} mode, current player: {current_player}")
+    print(f"🎮 Game found: {game.get('gamemode', 'classic')} mode, current player: {current_player}")
     
     # Send current game state
     if game.get('gamemode') == 'inverted':
@@ -809,7 +809,7 @@ def handle_get_game_state(data):
         print(f"📤 Emitting game_state_update_inverted: {game_state_data}")
         emit('game_state_update_inverted', game_state_data)
     else:
-        # For normal mode, send current image
+        # For classic mode, send current image
         current_image = None
         if game['images']:
             current_image = game['images'][-1]['path']
