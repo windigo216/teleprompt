@@ -137,6 +137,11 @@
             updateGameStatus(data.ready_to_start);
         });
 
+        socket.on('player_list_updated', function(data) {
+            updatePlayersList(data.players);
+            updateGameStatus(data.ready_to_start);
+        });
+
         socket.on('player_left', function(data) {
             updatePlayersList(data.players);
             updateGameStatus(data.ready_to_start);

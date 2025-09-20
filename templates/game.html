@@ -42,6 +42,11 @@
                             <div class="text-4xl mb-2">🖼️</div>
                             <p>Waiting for image...</p>
                         </div>
+                        <div id="loadingWheel" class="hidden text-center">
+                            <div class="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+                            <p class="mt-4 text-gray-600 font-medium">Generating image...</p>
+                            <p id="generatingPlayer" class="text-sm text-gray-500"></p>
+                        </div>
                         <img id="currentImage" class="hidden w-full h-full object-contain rounded-lg" alt="Current image">
                     </div>
                 </div>
@@ -100,6 +105,7 @@
         let currentPlayer = null;
         let timeRemaining = 20;
         let timer = null;
+        const PROMPT_TIMEOUT = 20; // seconds
 
         // Get player name from localStorage or prompt
         let playerName = localStorage.getItem('playerName');
@@ -107,6 +113,7 @@
             playerName = prompt('Enter your name:');
             localStorage.setItem('playerName', playerName);
         }
+        
 
         // Join room
         socket.emit('join_room', {
@@ -116,15 +123,60 @@
 
         // Socket event listeners
         socket.on('game_started', function(data) {
+            console.log('🎮 game_started received:', {
+                data: data,
+                myPlayerName: playerName,
+                currentPlayer: data.current_player
+            });
             updateGameProgress(data.players);
-            checkIfMyTurn(data.current_player);
+            // Calculate if it's my turn based on current player
+            const isMyTurn = data.current_player === playerName;
+            console.log('🎯 Calculated isMyTurn:', isMyTurn, '(current_player:', data.current_player, '=== myPlayerName:', playerName, ')');
+            checkIfMyTurn(data.current_player, isMyTurn);
+            // Start timer for first player when game starts
+            if (isMyTurn) {
+                console.log('⏰ Starting timer for first player');
+                startTimer(PROMPT_TIMEOUT);
+            } else {
+                console.log('⏸️ Not my turn, not starting timer');
+            }
+        });
+
+        socket.on('game_state_update', function(data) {
+            updateCurrentImage(data.image);
+            updateGameProgress(data.players);
+            // Use the is_my_turn flag from the server instead of calculating it
+            if (data.is_my_turn !== undefined) {
+                checkIfMyTurn(data.current_player, data.is_my_turn);
+            } else {
+                checkIfMyTurn(data.current_player);
+            }
+            // Don't start timer on game state update - only when image is fully generated
+        });
+
+        socket.on('image_generating', function(data) {
+            showLoadingWheel(data.player, data.prompt);
+        });
+
+        socket.on('image_generation_error', function(data) {
+            hideLoadingWheel();
+            alert('Image generation failed: ' + data.error);
         });
 
         socket.on('next_turn', function(data) {
+            hideLoadingWheel();
             updateCurrentImage(data.image);
             updateGameProgress();
-            checkIfMyTurn(data.current_player);
-            startTimer(data.timeout);
+            // Calculate if it's my turn based on current player
+            const isMyTurn = data.current_player === playerName;
+            console.log('next_turn - Calculated isMyTurn:', isMyTurn);
+            checkIfMyTurn(data.current_player, isMyTurn);
+            
+            // Only start timer if start_timer flag is true and it's my turn
+            if (data.start_timer && isMyTurn) {
+                console.log('Starting timer for next player');
+                startTimer(data.timeout);
+            }
         });
 
         socket.on('game_completed', function(data) {
@@ -136,15 +188,25 @@
             alert(data.message);
         });
 
-        function checkIfMyTurn(player) {
+        function checkIfMyTurn(player, isMyTurnOverride) {
             currentPlayer = player;
-            const isMyTurn = player === playerName;
+            const isMyTurn = isMyTurnOverride !== undefined ? isMyTurnOverride : (player === playerName);
+            
+            console.log('🔍 checkIfMyTurn called:', {
+                currentPlayer: player,
+                myPlayerName: playerName,
+                isMyTurn: isMyTurn,
+                isMyTurnOverride: isMyTurnOverride,
+                comparison: `${player} === ${playerName} = ${player === playerName}`
+            });
             
             if (isMyTurn) {
+                console.log('✅ Showing prompt input for player');
                 document.getElementById('waitingMessage').classList.add('hidden');
                 document.getElementById('promptSection').classList.remove('hidden');
                 document.getElementById('promptInput').focus();
             } else {
+                console.log('⏳ Showing waiting message for player');
                 document.getElementById('waitingMessage').classList.remove('hidden');
                 document.getElementById('promptSection').classList.add('hidden');
                 document.getElementById('waitingMessage').innerHTML = `
@@ -158,6 +220,10 @@
             const imageContainer = document.getElementById('imageContainer');
             const placeholder = document.getElementById('imagePlaceholder');
             const image = document.getElementById('currentImage');
+            const loadingWheel = document.getElementById('loadingWheel');
+            
+            // Hide loading wheel
+            loadingWheel.classList.add('hidden');
             
             if (imagePath) {
                 image.src = `/${imagePath}`;
@@ -184,6 +250,20 @@
                     </div>
                 `).join('');
             }
+        }
+
+        function showLoadingWheel(player, prompt) {
+            // Hide other elements
+            document.getElementById('imagePlaceholder').classList.add('hidden');
+            document.getElementById('currentImage').classList.add('hidden');
+            
+            // Show loading wheel
+            document.getElementById('loadingWheel').classList.remove('hidden');
+            document.getElementById('generatingPlayer').textContent = `${player} is generating an image...`;
+        }
+
+        function hideLoadingWheel() {
+            document.getElementById('loadingWheel').classList.add('hidden');
         }
 
         function startTimer(seconds) {

@@ -1,16 +1,17 @@
 # Teleprompt - AI Drawing Game
 
-A multiplayer web game similar to Gartic Phone, but with AI image generation using HuggingFace's Stable Diffusion model.
+A multiplayer web game similar to Gartic Phone, but with AI image generation using OpenAI's DALL-E 3 model.
 
 ## Features
 
 - 🎨 Real-time multiplayer gameplay with WebSockets
-- 🤖 AI image generation using HuggingFace Inference API
+- 🤖 AI image generation using OpenAI DALL-E 3 model
 - ⏱️ Time-limited prompts (20 seconds)
 - 🎯 Configurable player count (default: 4 players, minimum: 2)
 - 👑 Room creator can start game manually with any number of players
 - 📱 Responsive design with Tailwind CSS
-- 🎲 Fallback to random stock images if AI generation fails
+- 🎲 Fallback to random DALL-E generated images if AI generation fails
+- ⏳ Real-time loading indicators during image generation
 
 ## Setup
 
@@ -19,12 +20,12 @@ A multiplayer web game similar to Gartic Phone, but with AI image generation usi
    pip install -r requirements.txt
    ```
 
-2. **Set up HuggingFace API token:**
+2. **Set up OpenAI API key:**
    ```bash
-   export HUGGINGFACE_API_TOKEN="your-token-here"
+   export OPENAI_API_KEY="your-api-key-here"
    ```
    
-   Get your free token at: https://huggingface.co/settings/tokens
+   Get your API key at: https://platform.openai.com/api-keys
 
 3. **Run the application:**
    ```bash
@@ -47,7 +48,8 @@ A multiplayer web game similar to Gartic Phone, but with AI image generation usi
 
 3. **Play the Game:**
    - Each player gets 20 seconds to describe the current image
-   - AI generates a new image based on your prompt
+   - AI generates a new image using DALL-E 3 based on your prompt
+   - All players see a loading wheel during image generation
    - The chain continues until all players have had a turn
 
 4. **View Results:**
@@ -90,12 +92,12 @@ teleprompt/
 
 - **Backend:** Python Flask + Flask-SocketIO
 - **Frontend:** HTML + Tailwind CSS + Vanilla JavaScript
-- **AI:** HuggingFace Inference API (Stable Diffusion)
+- **AI:** OpenAI DALL-E 3 API
 - **Real-time:** WebSockets for multiplayer communication
 
 ## Troubleshooting
 
-- **No images generating:** Check your HuggingFace API token
+- **No images generating:** Check your OpenAI API key
 - **Connection issues:** Ensure all players are on the same network
 - **Game not starting:** Make sure you have at least 4 players
 

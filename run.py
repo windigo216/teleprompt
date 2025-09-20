@@ -6,11 +6,12 @@ import os
 import sys
 
 def main():
-    # Check if HuggingFace token is set
-    if not os.getenv('HUGGINGFACE_API_TOKEN'):
-        print("⚠️  Warning: HUGGINGFACE_API_TOKEN not set!")
-        print("   Set it with: export HUGGINGFACE_API_TOKEN='your-token-here'")
-        print("   Get your free token at: https://huggingface.co/settings/tokens")
+    # Check if OpenAI API key is set
+    if not os.getenv('OPENAI_API_KEY'):
+        print("⚠️  Warning: OPENAI_API_KEY not set!")
+        print("   Set it with: export OPENAI_API_KEY='your-api-key-here'")
+        print("   Or create a .env file with: OPENAI_API_KEY=your-api-key-here")
+        print("   Get your API key at: https://platform.openai.com/api-keys")
         print()
     
     # Import and run the app
