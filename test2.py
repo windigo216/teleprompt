@@ -34,7 +34,7 @@ def describe_image(image_path, detail_level="high"):
                     "content": [
                         {
                             "type": "text", 
-                            "text": "Describe this image in detail. Be specific about objects, colors, composition, style, and any text present. Your description should be detailed enough that someone could use it to try to recreate a similar image with an AI image generator. However, it must be short enough that someone can read it within 5 seconds or less (keep it to 20-30 words)."
+                            "text": "Describe this image in detail. It is a very rough outlined line drawing. The user had a specific non-abstract non-random goal when drawing this iamge. If the user had more time to continue (or was better at drawing), what would this be? Describe objects, colors, composition, style, and any text present. Your description should be detailed enough that someone could use it to try to recreate a similar image with an AI image generator. However, it must be short enough that someone can read it within 5 seconds or less (keep it to 20-30 words)."
                         },
                         {
                             "type": "image_url",
@@ -78,7 +78,7 @@ def describe_and_save_image(image_path, text_filename="image_description.txt"):
 # Usage example
 if __name__ == "__main__":
     # Describe an image and save the text
-    image_path = "future_city.png"  # Replace with your image path
+    image_path = "scribbles.png"  # Replace with your image path
     description = describe_and_save_image(image_path, "description_of_future_city.txt")
     
     if description:
