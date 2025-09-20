@@ -63,7 +63,10 @@
                     <p class="text-gray-600">AI-powered telephone prompting with friends</p>
                 </div>
 
-                <h3 id="playersInRoomTitle" class="text-lg font-semibold text-gray-800 mb-4">Players in Room</h3>
+                <div id="playersInRoomTitle" class="flex justify-between items-center text-lg font-semibold text-gray-800 mb-4">
+                    <span>Players in Room:</span>
+                    <span>ID: <span id="roomCodeDisplay" class="text-blue-600 underline cursor-pointer hover:text-blue-800"></span></span>
+                </div>
                 <div id="playersList" class="space-y-2"></div>
                 
                 <!-- Settings Section -->
@@ -133,6 +136,15 @@
         // Generate random room code
         function generateRoomCode() {
             return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        // Copy to clipboard function
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                alert('Room ID copied to clipboard!');
+            }, function(err) {
+                console.error('Could not copy text: ', err);
+            });
         }
 
         // Join room
@@ -319,7 +331,9 @@
             document.getElementById('joinPanel').classList.add('hidden');
             document.getElementById('gamePanel').classList.remove('hidden');
             
-            document.getElementById('playersInRoomTitle').innerHTML = `Players in Room <span style="color: blue; text-decoration: underline;">${currentRoom}</span>`;
+            // Update room code display
+            document.getElementById('roomCodeDisplay').textContent = currentRoom;
+            document.getElementById('roomCodeDisplay').setAttribute('onclick', `copyToClipboard('${currentRoom}')`);
         }
 
         function updateGameStatus(readyToStart) {

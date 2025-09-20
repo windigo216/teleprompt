@@ -394,7 +394,7 @@ def start_game(room_code):
         print(f"game_started event emitted to room {room_code}")
     else:
         # Normal mode - use stock1.svg for player 1
-        starting_image = f'static/img/stock1.svg'
+        starting_image = f'static/img/starting-img.png'
         
         games[room_code] = {
             'id': game_id,
