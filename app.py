@@ -146,6 +146,53 @@ def results(room_code):
         return render_template('results.html', game=game)
     return "Game not found", 404
 
+@app.route('/canvas')
+def canvas():
+    return render_template('canvas.html')
+
+@app.route('/save_canvas', methods=['POST'])
+def save_canvas():
+    try:
+        data = request.get_json()
+        image_data = data.get('image_data')
+        format_type = data.get('format', 'png')
+        
+        if not image_data:
+            return jsonify({'error': 'No image data provided'}), 400
+        
+        # Remove data URL prefix (e.g., "data:image/png;base64,")
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+        
+        # Decode base64 image data
+        import base64
+        image_bytes = base64.b64decode(image_data)
+        
+        # Create filename with timestamp
+        import time
+        timestamp = int(time.time())
+        filename = f'canvas_drawing_{timestamp}.{format_type}'
+        
+        # Ensure the directory exists
+        import os
+        save_dir = 'static/canvas_drawings'
+        os.makedirs(save_dir, exist_ok=True)
+        
+        # Save the file
+        file_path = os.path.join(save_dir, filename)
+        with open(file_path, 'wb') as f:
+            f.write(image_bytes)
+        
+        return jsonify({
+            'success': True, 
+            'filename': filename,
+            'path': f'/static/canvas_drawings/{filename}',
+            'message': f'Drawing saved as {filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to save image: {str(e)}'}), 500
+
 @socketio.on('join_room')
 def handle_join_room(data):
     room_code = data['room_code']
