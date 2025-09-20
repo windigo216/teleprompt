@@ -8,7 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <style>
         .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-color: #7c6bca;
         }
         .pulse-animation {
             animation: pulse 1s infinite;
@@ -48,12 +48,14 @@
     </style>
 </head>
 <body class="min-h-screen gradient-bg">
-    <div class="container mx-auto px-4 py-8">
+    <!-- Moving Emoji Mesh Canvas -->
+    <canvas id="emojiMesh" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;pointer-events:none;"></canvas>
+    <div class="container mx-auto px-4 py-8" style="position:relative;z-index:1;">
         <div class="max-w-6xl mx-auto">
             <!-- Header -->
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
                 <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-bold text-gray-800">🎨 Teleprompt Inverted Game</h1>
+                    <h1 class="text-2xl font-bold text-gray-800">Teleprompt Inverted Game</h1>
                     <div class="text-sm text-gray-600">
                         Room: <span id="roomCode" class="font-mono font-bold">{{ room_code }}</span>
                     </div>
@@ -563,6 +565,113 @@
             document.getElementById('waitingMessage').classList.remove('hidden');
             clearInterval(timer);
         });
+
+        // Emoji Mesh Physics Simulation
+        const emojiCanvas = document.getElementById('emojiMesh');
+        const emojiCtx = emojiCanvas.getContext('2d');
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        emojiCanvas.width = width;
+        emojiCanvas.height = height;
+        const phoneEmoji = '📞';
+        const brainEmoji = '🧠';
+        const gridCols = Math.floor(width / 70)+1;
+        const gridRows = Math.floor(height / 70)+1;
+        const spacing = 69;
+        const mesh = [];
+        const springs = [];
+        let mouse = {x: -1000, y: -1000};
+        // Node structure: {x, y, vx, vy, baseX, baseY, emoji}
+        for (let r = 0; r < gridRows; r++) {
+            for (let c = 0; c < gridCols; c++) {
+                mesh.push({
+                    x: c * spacing + spacing/2,
+                    y: r * spacing + spacing/2,
+                    vx: 0,
+                    vy: 0,
+                    baseX: c * spacing + spacing/2,
+                    baseY: r * spacing + spacing/2,
+                    emoji: (r + c) % 2 === 0 ? phoneEmoji : brainEmoji
+                });
+            }
+        }
+        // Connect springs (adjacent nodes)
+        function nodeIdx(r, c) { return r * gridCols + c; }
+        for (let r = 0; r < gridRows; r++) {
+            for (let c = 0; c < gridCols; c++) {
+                let idx = nodeIdx(r, c);
+                if (c < gridCols - 1) springs.push([idx, nodeIdx(r, c+1)]);
+                if (r < gridRows - 1) springs.push([idx, nodeIdx(r+1, c)]);
+            }
+        }
+        // Mouse interaction
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+        window.addEventListener('mouseleave', () => {
+            mouse.x = -1000; mouse.y = -1000;
+        });
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            emojiCanvas.width = width;
+            emojiCanvas.height = height;
+        });
+        function stepPhysics() {
+            // Spring forces
+            for (const [i, j] of springs) {
+                const a = mesh[i], b = mesh[j];
+                const dx = b.x - a.x, dy = b.y - a.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                const rest = spacing;
+                const force = 0.02 * (dist - rest); // reduced spring force for slower movement
+                const fx = force * dx / (dist || 1);
+                const fy = force * dy / (dist || 1);
+                a.vx += fx; a.vy += fy;
+                b.vx -= fx; b.vy -= fy;
+            }
+            // Jiggle/ripple
+            for (const node of mesh) {
+                // Restore to base position
+                const dx = node.baseX - node.x;
+                const dy = node.baseY - node.y;
+                node.vx += 0.004 * dx + (Math.random()-0.5)*0.02; // slower restoration and less random jiggle
+                node.vy += 0.004 * dy + (Math.random()-0.5)*0.02;
+                // Mouse repulsion
+                const mx = node.x - mouse.x;
+                const my = node.y - mouse.y;
+                const mdist = Math.sqrt(mx*mx + my*my);
+                if (mdist < 120) {
+                    const repulse = 2 * (1 - mdist/120);
+                    node.vx += repulse * mx/(mdist||1);
+                    node.vy += repulse * my/(mdist||1);
+                }
+                // Damping
+                node.vx *= 0.75;
+                node.vy *= 0.75;
+                node.x += node.vx;
+                node.y += node.vy;
+            }
+        }
+        function drawMesh() {
+            emojiCtx.clearRect(0, 0, width, height);
+            emojiCtx.font = '40px serif';
+            emojiCtx.textAlign = 'center';
+            emojiCtx.textBaseline = 'middle';
+            emojiCtx.save();
+            emojiCtx.globalAlpha = 0.5; // half transparency for all emojis
+            for (const node of mesh) {
+                emojiCtx.fillText(node.emoji, node.x, node.y);
+            }
+            emojiCtx.restore();
+        }
+        function animate() {
+            stepPhysics();
+            drawMesh();
+            requestAnimationFrame(animate);
+        }
+        animate();
     </script>
 </body>
 </html>
