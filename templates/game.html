@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teleprompt - Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .pulse-animation {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- Header -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-2xl font-bold text-gray-800">🎨 Teleprompt Game</h1>
+                    <div class="text-sm text-gray-600">
+                        Room: <span id="roomCode" class="font-mono font-bold">{{ room_code }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Area -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Image Display -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Current Image</h2>
+                    <div id="imageContainer" class="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
+                        <div id="imagePlaceholder" class="text-gray-500 text-center">
+                            <div class="text-4xl mb-2">🖼️</div>
+                            <p>Waiting for image...</p>
+                        </div>
+                        <img id="currentImage" class="hidden w-full h-full object-contain rounded-lg" alt="Current image">
+                    </div>
+                </div>
+
+                <!-- Prompt Input -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Your Turn</h2>
+                    
+                    <div id="waitingMessage" class="text-center text-gray-600 py-8">
+                        <div class="text-4xl mb-2">⏳</div>
+                        <p>Waiting for your turn...</p>
+                    </div>
+
+                    <div id="promptSection" class="hidden">
+                        <div class="mb-4">
+                            <label for="promptInput" class="block text-sm font-medium text-gray-700 mb-2">
+                                Describe what you see in the image:
+                            </label>
+                            <textarea id="promptInput" 
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                      rows="4" 
+                                      placeholder="A beautiful sunset over mountains..."></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center text-sm text-gray-600">
+                                <span>Time remaining:</span>
+                                <span id="timeRemaining" class="font-mono font-bold text-red-600">20s</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-1000" style="width: 100%"></div>
+                            </div>
+                        </div>
+
+                        <button id="submitPrompt" 
+                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                            Submit Prompt
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Status -->
+            <div class="mt-6 bg-white rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Game Progress</h3>
+                <div id="gameProgress" class="space-y-2">
+                    <!-- Progress will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const roomCode = '{{ room_code }}';
+        let currentPlayer = null;
+        let timeRemaining = 20;
+        let timer = null;
+
+        // Get player name from localStorage or prompt
+        let playerName = localStorage.getItem('playerName');
+        if (!playerName) {
+            playerName = prompt('Enter your name:');
+            localStorage.setItem('playerName', playerName);
+        }
+
+        // Join room
+        socket.emit('join_room', {
+            player_name: playerName,
+            room_code: roomCode
+        });
+
+        // Socket event listeners
+        socket.on('game_started', function(data) {
+            updateGameProgress(data.players);
+            checkIfMyTurn(data.current_player);
+        });
+
+        socket.on('next_turn', function(data) {
+            updateCurrentImage(data.image);
+            updateGameProgress();
+            checkIfMyTurn(data.current_player);
+            startTimer(data.timeout);
+        });
+
+        socket.on('game_completed', function(data) {
+            // Redirect to results page
+            window.location.href = `/results/${roomCode}`;
+        });
+
+        socket.on('error', function(data) {
+            alert(data.message);
+        });
+
+        function checkIfMyTurn(player) {
+            currentPlayer = player;
+            const isMyTurn = player === playerName;
+            
+            if (isMyTurn) {
+                document.getElementById('waitingMessage').classList.add('hidden');
+                document.getElementById('promptSection').classList.remove('hidden');
+                document.getElementById('promptInput').focus();
+            } else {
+                document.getElementById('waitingMessage').classList.remove('hidden');
+                document.getElementById('promptSection').classList.add('hidden');
+                document.getElementById('waitingMessage').innerHTML = `
+                    <div class="text-4xl mb-2">👤</div>
+                    <p>Waiting for <strong>${player}</strong> to submit their prompt...</p>
+                `;
+            }
+        }
+
+        function updateCurrentImage(imagePath) {
+            const imageContainer = document.getElementById('imageContainer');
+            const placeholder = document.getElementById('imagePlaceholder');
+            const image = document.getElementById('currentImage');
+            
+            if (imagePath) {
+                image.src = `/${imagePath}`;
+                image.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                image.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            }
+        }
+
+        function updateGameProgress(players) {
+            const progressDiv = document.getElementById('gameProgress');
+            if (players) {
+                progressDiv.innerHTML = players.map((player, index) => `
+                    <div class="flex items-center space-x-3 p-2 bg-gray-50 rounded-md">
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-bold text-blue-600">
+                            ${index + 1}
+                        </div>
+                        <span class="text-gray-700">${player}</span>
+                        <div class="ml-auto">
+                            <span class="text-sm text-gray-500">Round ${index + 1}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function startTimer(seconds) {
+            timeRemaining = seconds;
+            clearInterval(timer);
+            
+            timer = setInterval(() => {
+                timeRemaining--;
+                document.getElementById('timeRemaining').textContent = `${timeRemaining}s`;
+                
+                const progress = (timeRemaining / seconds) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timer);
+                    handleTimeout();
+                }
+            }, 1000);
+        }
+
+        function handleTimeout() {
+            if (currentPlayer === playerName) {
+                socket.emit('timeout_prompt', {
+                    room_code: roomCode
+                });
+            }
+        }
+
+        // Submit prompt
+        document.getElementById('submitPrompt').addEventListener('click', function() {
+            const prompt = document.getElementById('promptInput').value.trim();
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+            
+            socket.emit('submit_prompt', {
+                room_code: roomCode,
+                player_name: playerName,
+                prompt: prompt
+            });
+            
+            // Clear input and hide prompt section
+            document.getElementById('promptInput').value = '';
+            document.getElementById('promptSection').classList.add('hidden');
+            document.getElementById('waitingMessage').classList.remove('hidden');
+            clearInterval(timer);
+        });
+
+        // Allow Enter key to submit
+        document.getElementById('promptInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('submitPrompt').click();
+            }
+        });
+    </script>
+</body>
+</html>

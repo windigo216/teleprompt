@@ -1,0 +1,15 @@
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#059669;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10B981;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#grad2)"/>
+  <text x="256" y="280" font-family="Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="white">Nature Scene</text>
+  <polygon points="0,400 100,300 200,350 300,250 400,300 512,200 512,512 0,512" fill="white" opacity="0.3"/>
+  <circle cx="100" cy="100" r="40" fill="white" opacity="0.6"/>
+  <circle cx="400" cy="120" r="25" fill="white" opacity="0.4"/>
+  <rect x="50" y="350" width="20" height="100" fill="white" opacity="0.5"/>
+  <rect x="200" y="320" width="15" height="130" fill="white" opacity="0.4"/>
+</svg>
