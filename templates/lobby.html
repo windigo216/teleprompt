@@ -172,7 +172,7 @@
         });
 
         socket.on('game_started', function(data) {
-            window.location.href = `/game/${currentRoom}`;
+            window.location.href = `/game/${currentRoom}?player=${encodeURIComponent(playerName)}`;
         });
 
         socket.on('error', function(data) {

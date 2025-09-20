@@ -100,26 +100,6 @@
     </div>
 
     <script>
-        // Clear cache and cookies on page load
-        if ('caches' in window) {
-            caches.keys().then(function(names) {
-                for (let name of names) {
-                    caches.delete(name);
-                }
-            });
-        }
-        
-        // Clear localStorage and sessionStorage
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // Clear cookies
-        document.cookie.split(";").forEach(function(c) { 
-            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-        });
-        
-        console.log('🧹 Cache, cookies, and storage cleared on page load');
-        
         const socket = io();
         const roomCode = '{{ room_code }}';
         let currentPlayer = null;
@@ -127,8 +107,9 @@
         let timer = null;
         const PROMPT_TIMEOUT = 20; // seconds
 
-        // Get player name from prompt (no localStorage since we cleared it)
-        let playerName = prompt('Enter your name:');
+        // Get player name from URL parameters (passed from lobby)
+        const urlParams = new URLSearchParams(window.location.search);
+        let playerName = urlParams.get('player') || 'Anonymous';
         
 
         // Join room
