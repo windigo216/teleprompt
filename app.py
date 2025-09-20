@@ -255,8 +255,10 @@ def start_game(room_code):
     players = rooms[room_code]
     game_id = str(uuid.uuid4())
     
-    # Get a random starting image
-    starting_image = get_random_static_image()
+    # Always use stock1.svg for player 1
+    # CHANGE THIS TO THE DOMAIN OF THE SERVER
+    domain = 'http://localhost:8000'
+    starting_image = f'{domain}/static/img/stock1.svg'
     
     games[room_code] = {
         'id': game_id,
