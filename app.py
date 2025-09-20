@@ -25,6 +25,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 games = {}
 rooms = {}
 room_creators = {}  # Track who created each room
+room_settings = {}  # Store settings per room
 
 # Configuration
 MIN_PLAYERS = 4
@@ -130,11 +131,67 @@ def index():
 def game(room_code):
     return render_template('game.html', room_code=room_code)
 
+@app.route('/inverted-game/<room_code>')
+def inverted_game(room_code):
+    return render_template('inverted-game.html', room_code=room_code)
+
 @app.route('/results/<room_code>')
 def results(room_code):
     if room_code in games:
-        return render_template('results.html', game=games[room_code])
+        game = games[room_code]
+        # Clean up old completed games (older than 1 hour)
+        if game.get('status') == 'completed' and time.time() - game.get('completion_time', game.get('start_time', 0)) > 3600:
+            del games[room_code]
+            return "Game not found", 404
+        return render_template('results.html', game=game)
     return "Game not found", 404
+
+@app.route('/canvas')
+def canvas():
+    return render_template('canvas.html')
+
+@app.route('/save_canvas', methods=['POST'])
+def save_canvas():
+    try:
+        data = request.get_json()
+        image_data = data.get('image_data')
+        format_type = data.get('format', 'png')
+        
+        if not image_data:
+            return jsonify({'error': 'No image data provided'}), 400
+        
+        # Remove data URL prefix (e.g., "data:image/png;base64,")
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+        
+        # Decode base64 image data
+        import base64
+        image_bytes = base64.b64decode(image_data)
+        
+        # Create filename with timestamp
+        import time
+        timestamp = int(time.time())
+        filename = f'canvas_drawing_{timestamp}.{format_type}'
+        
+        # Ensure the directory exists
+        import os
+        save_dir = 'static/canvas_drawings'
+        os.makedirs(save_dir, exist_ok=True)
+        
+        # Save the file
+        file_path = os.path.join(save_dir, filename)
+        with open(file_path, 'wb') as f:
+            f.write(image_bytes)
+        
+        return jsonify({
+            'success': True, 
+            'filename': filename,
+            'path': f'/static/canvas_drawings/{filename}',
+            'message': f'Drawing saved as {filename}'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to save image: {str(e)}'}), 500
 
 @socketio.on('join_room')
 def handle_join_room(data):
@@ -143,9 +200,12 @@ def handle_join_room(data):
     is_creator = data.get('is_creator', False)
     
     if room_code not in rooms:
+        if not is_creator:
+            emit('error', {'message': 'Room does not exist. Please create a new room or check the room code.'})
+            return
         rooms[room_code] = []
-        if is_creator:
-            room_creators[room_code] = player_name
+        room_creators[room_code] = player_name
+        room_settings[room_code] = {'time_limit': 20, 'gamemode': 'normal'}
     
     if len(rooms[room_code]) >= MIN_PLAYERS and not any(p['name'] == player_name for p in rooms[room_code]):
         emit('room_full', {'message': 'Room is full'})
@@ -175,13 +235,16 @@ def handle_join_room(data):
         'player_name': player_name,
         'players': [p['name'] for p in rooms[room_code]],
         'ready_to_start': len(rooms[room_code]) >= MIN_PLAYERS,
-        'is_creator': is_room_creator
+        'is_creator': is_room_creator,
+        'settings': room_settings[room_code]
     })
     
     # Notify other players in the room about the new player
     emit('player_list_updated', {
         'players': [p['name'] for p in rooms[room_code]],
-        'ready_to_start': len(rooms[room_code]) >= MIN_PLAYERS
+        'ready_to_start': len(rooms[room_code]) >= MIN_PLAYERS,
+        'creator': room_creators.get(room_code),
+        'settings': room_settings[room_code]
     }, room=room_code)
     
     # If game is already running, send current game state to the joining player
@@ -199,7 +262,7 @@ def handle_join_room(data):
             'current_player': current_player,
             'round': game['current_round'],
             'image': current_image,
-            'timeout': PROMPT_TIMEOUT,
+            'timeout': room_settings.get(room_code, {}).get('time_limit', 20),
             'players': [p['name'] for p in game['players']],
             'is_my_turn': current_player == player_name
         })
@@ -280,7 +343,8 @@ def start_game(room_code):
         'game_id': game_id,
         'players': [p['name'] for p in players],
         'current_player': players[0]['name'],
-        'starting_image': starting_image
+        'starting_image': starting_image,
+        'settings': room_settings.get(room_code, {'time_limit': 20, 'gamemode': 'normal'})
     }
     print(f"Emitting game_started event: {game_started_data}")
     emit('game_started', game_started_data, room=room_code)
@@ -350,11 +414,19 @@ def handle_submit_prompt(data):
             # Check if game is complete
             if game['current_round'] >= len(game['players']):
                 game['status'] = 'completed'
+                game['completion_time'] = time.time()
                 socketio.emit('game_completed', {
                     'game_id': game['id'],
                     'prompts': game['prompts'],
                     'images': game['images']
                 }, room=room_code)
+                # Clean up after game completion (keep game data for results page)
+                if room_code in rooms:
+                    del rooms[room_code]
+                if room_code in room_creators:
+                    del room_creators[room_code]
+                if room_code in room_settings:
+                    del room_settings[room_code]
             else:
                 next_player = game['players'][game['current_player']]['name']
                 # Emit next turn with image to all players
@@ -362,7 +434,7 @@ def handle_submit_prompt(data):
                     'current_player': next_player,
                     'round': game['current_round'],
                     'image': image_path,
-                    'timeout': PROMPT_TIMEOUT,
+                    'timeout': room_settings.get(room_code, {}).get('time_limit', 20),
                     'start_timer': True  # Signal to start timer
                 }, room=room_code)
         except Exception as e:
@@ -402,11 +474,19 @@ def handle_timeout_prompt(data):
     # Check if game is complete
     if game['current_round'] >= len(game['players']):
         game['status'] = 'completed'
+        game['completion_time'] = time.time()
         emit('game_completed', {
             'game_id': game['id'],
             'prompts': game['prompts'],
             'images': game['images']
         }, room=room_code)
+        # Clean up after game completion (keep game data for results page)
+        if room_code in rooms:
+            del rooms[room_code]
+        if room_code in room_creators:
+            del room_creators[room_code]
+        if room_code in room_settings:
+            del room_settings[room_code]
     else:
         next_player = game['players'][game['current_player']]['name']
         # Emit next turn with image to all players
@@ -414,7 +494,7 @@ def handle_timeout_prompt(data):
             'current_player': next_player,
             'round': game['current_round'],
             'image': image_path,
-            'timeout': PROMPT_TIMEOUT,
+            'timeout': room_settings.get(room_code, {}).get('time_limit', 20),
             'start_timer': True  # Start timer for timeout case too
         }, room=room_code)
 
@@ -427,12 +507,39 @@ def handle_disconnect():
         rooms[room_code] = [p for p in players if p['id'] != request.sid]
         
         if len(rooms[room_code]) == 0:
-            del rooms[room_code]
+            # Don't delete room if game is running
+            if room_code not in games:
+                del rooms[room_code]
+                if room_code in room_creators:
+                    del room_creators[room_code]
+                if room_code in room_settings:
+                    del room_settings[room_code]
         else:
             emit('player_list_updated', {
                 'players': [p['name'] for p in rooms[room_code]],
-                'ready_to_start': len(rooms[room_code]) >= MIN_PLAYERS
+                'ready_to_start': len(rooms[room_code]) >= MIN_PLAYERS,
+                'creator': room_creators.get(room_code),
+                'settings': room_settings.get(room_code, {'time_limit': 20, 'gamemode': 'normal'})
             }, room=room_code)
+
+@socketio.on('update_settings')
+def handle_update_settings(data):
+    room_code = data['room_code']
+    player_name = data['player_name']
+    new_settings = data['settings']
+    
+    # Check if player is the room creator
+    if room_creators.get(room_code) != player_name:
+        emit('error', {'message': 'Only the room creator can update settings'})
+        return
+    
+    # Update settings
+    room_settings[room_code].update(new_settings)
+    
+    # Notify all players in the room
+    emit('settings_updated', {
+        'settings': room_settings[room_code]
+    }, room=room_code)
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, host='0.0.0.0', port=8000)

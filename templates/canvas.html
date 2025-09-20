@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drawing Canvas - Teleprompt</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .color-preset {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .color-preset:hover {
+            transform: scale(1.1);
+        }
+        .color-preset.active {
+            border-color: #374151;
+            box-shadow: 0 0 0 2px #ffffff;
+        }
+        .tool-button {
+            transition: all 0.2s ease;
+        }
+        .tool-button.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .tool-button:hover {
+            background-color: #e5e7eb;
+        }
+        .tool-button.active:hover {
+            background-color: #2563eb;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-4">
+                    <h1 class="text-2xl font-bold text-gray-900">Drawing Canvas</h1>
+                    <a href="/" class="text-blue-600 hover:text-blue-800 text-sm font-medium">← Back to Game</a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="clearCanvas" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md font-medium transition duration-200">
+                        Clear Canvas
+                    </button>
+                    <button id="saveCanvasPNG" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md font-medium transition duration-200">
+                        Save as PNG
+                    </button>
+                    <button id="saveCanvasJPG" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md font-medium transition duration-200">
+                        Save as JPG
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Tools Panel -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Drawing Tools</h2>
+                    
+                    <!-- Tool Selection -->
+                    <div class="mb-6">
+                        <h3 class="text-sm font-medium text-gray-700 mb-3">Tool</h3>
+                        <div class="flex space-x-2">
+                            <button id="markerTool" class="tool-button active flex-1 px-3 py-2 rounded-md border border-gray-300 text-sm font-medium">
+                                🖊️ Marker
+                            </button>
+                            <button id="eraserTool" class="tool-button flex-1 px-3 py-2 rounded-md border border-gray-300 text-sm font-medium">
+                                🧽 Eraser
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Color Picker -->
+                    <div class="mb-6">
+                        <h3 class="text-sm font-medium text-gray-700 mb-3">Color</h3>
+                        <div class="flex items-center space-x-3">
+                            <input type="color" id="colorPicker" value="#000000" class="w-12 h-12 rounded-md border border-gray-300 cursor-pointer">
+                            <div class="flex-1">
+                                <input type="text" id="colorInput" value="#000000" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preset Colors -->
+                    <div class="mb-6">
+                        <h3 class="text-sm font-medium text-gray-700 mb-3">Quick Colors</h3>
+                        <div class="grid grid-cols-4 gap-2">
+                            <div class="color-preset active" style="background-color: #000000;" data-color="#000000"></div>
+                            <div class="color-preset" style="background-color: #ef4444;" data-color="#ef4444"></div>
+                            <div class="color-preset" style="background-color: #f97316;" data-color="#f97316"></div>
+                            <div class="color-preset" style="background-color: #eab308;" data-color="#eab308"></div>
+                            <div class="color-preset" style="background-color: #22c55e;" data-color="#22c55e"></div>
+                            <div class="color-preset" style="background-color: #3b82f6;" data-color="#3b82f6"></div>
+                            <div class="color-preset" style="background-color: #8b5cf6;" data-color="#8b5cf6"></div>
+                        </div>
+                    </div>
+
+                    <!-- Marker Size -->
+                    <div class="mb-6" id="markerSizeSection">
+                        <h3 class="text-sm font-medium text-gray-700 mb-3">Marker Size</h3>
+                        <input type="range" id="markerSize" min="1" max="20" value="5" class="w-full">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>1px</span>
+                            <span id="markerSizeValue">5px</span>
+                            <span>20px</span>
+                        </div>
+                    </div>
+
+                    <!-- Eraser Size -->
+                    <div class="mb-6 hidden" id="eraserSizeSection">
+                        <h3 class="text-sm font-medium text-gray-700 mb-3">Eraser Size</h3>
+                        <input type="range" id="eraserSize" min="5" max="50" value="20" class="w-full">
+                        <div class="flex justify-between text-xs text-gray-500 mt-1">
+                            <span>5px</span>
+                            <span id="eraserSizeValue">20px</span>
+                            <span>50px</span>
+                        </div>
+                    </div>
+
+                    <!-- Current Settings -->
+                    <div class="bg-gray-50 rounded-lg p-4">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Current Settings</h3>
+                        <div class="text-sm text-gray-600 space-y-1">
+                            <div>Tool: <span id="currentTool">Marker</span></div>
+                            <div>Color: <span id="currentColor">#000000</span></div>
+                            <div>Size: <span id="currentSize">5px</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Area -->
+            <div class="lg:col-span-3">
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold text-gray-800">Drawing Board</h2>
+                        <div class="text-sm text-gray-500">
+                            Click and drag to draw
+                        </div>
+                    </div>
+                    
+                    <div class="border-2 border-gray-300 rounded-lg overflow-hidden">
+                        <canvas id="drawingCanvas" width="800" height="600" class="w-full max-w-full h-auto bg-white cursor-crosshair" style="max-height: 600px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Canvas setup
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Drawing state
+        let isDrawing = false;
+        let currentTool = 'marker';
+        let currentColor = '#000000';
+        let markerSize = 5;
+        let eraserSize = 20;
+        
+        // Tool buttons
+        const markerTool = document.getElementById('markerTool');
+        const eraserTool = document.getElementById('eraserTool');
+        
+        // Color elements
+        const colorPicker = document.getElementById('colorPicker');
+        const colorInput = document.getElementById('colorInput');
+        const colorPresets = document.querySelectorAll('.color-preset');
+        
+        // Size controls
+        const markerSizeSlider = document.getElementById('markerSize');
+        const markerSizeValue = document.getElementById('markerSizeValue');
+        const eraserSizeSlider = document.getElementById('eraserSize');
+        const eraserSizeValue = document.getElementById('eraserSizeValue');
+        
+        // Current settings display
+        const currentToolDisplay = document.getElementById('currentTool');
+        const currentColorDisplay = document.getElementById('currentColor');
+        const currentSizeDisplay = document.getElementById('currentSize');
+        
+        // Action buttons
+        const clearCanvas = document.getElementById('clearCanvas');
+        const saveCanvasPNG = document.getElementById('saveCanvasPNG');
+        const saveCanvasJPG = document.getElementById('saveCanvasJPG');
+        
+        // Initialize canvas
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Tool selection
+        markerTool.addEventListener('click', () => {
+            currentTool = 'marker';
+            markerTool.classList.add('active');
+            eraserTool.classList.remove('active');
+            
+            // Show marker size, hide eraser size
+            document.getElementById('markerSizeSection').classList.remove('hidden');
+            document.getElementById('eraserSizeSection').classList.add('hidden');
+            
+            updateCurrentSettings();
+        });
+        
+        eraserTool.addEventListener('click', () => {
+            currentTool = 'eraser';
+            eraserTool.classList.add('active');
+            markerTool.classList.remove('active');
+            
+            // Show eraser size, hide marker size
+            document.getElementById('eraserSizeSection').classList.remove('hidden');
+            document.getElementById('markerSizeSection').classList.add('hidden');
+            
+            updateCurrentSettings();
+        });
+        
+        // Color picker
+        colorPicker.addEventListener('change', (e) => {
+            currentColor = e.target.value;
+            colorInput.value = currentColor;
+            updateCurrentSettings();
+        });
+        
+        colorInput.addEventListener('change', (e) => {
+            currentColor = e.target.value;
+            colorPicker.value = currentColor;
+            updateCurrentSettings();
+        });
+        
+        // Preset colors
+        colorPresets.forEach(preset => {
+            preset.addEventListener('click', () => {
+                // Remove active class from all presets
+                colorPresets.forEach(p => p.classList.remove('active'));
+                // Add active class to clicked preset
+                preset.classList.add('active');
+                
+                currentColor = preset.dataset.color;
+                colorPicker.value = currentColor;
+                colorInput.value = currentColor;
+                updateCurrentSettings();
+            });
+        });
+        
+        // Marker size
+        markerSizeSlider.addEventListener('input', (e) => {
+            markerSize = parseInt(e.target.value);
+            markerSizeValue.textContent = markerSize + 'px';
+            updateCurrentSettings();
+        });
+        
+        // Eraser size
+        eraserSizeSlider.addEventListener('input', (e) => {
+            eraserSize = parseInt(e.target.value);
+            eraserSizeValue.textContent = eraserSize + 'px';
+            updateCurrentSettings();
+        });
+        
+        // Drawing functions
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath();
+        }
+        
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            
+            // Use appropriate size based on current tool
+            if (currentTool === 'marker') {
+                ctx.lineWidth = markerSize;
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = currentColor;
+            } else if (currentTool === 'eraser') {
+                ctx.lineWidth = eraserSize;
+                ctx.globalCompositeOperation = 'destination-out';
+            }
+            
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+        
+        // Canvas event listeners
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        });
+        
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const mouseEvent = new MouseEvent('mouseup', {});
+            canvas.dispatchEvent(mouseEvent);
+        });
+        
+        // Clear canvas
+        clearCanvas.addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear the canvas?')) {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        });
+        
+        // Save canvas as PNG
+        saveCanvasPNG.addEventListener('click', () => {
+            saveCanvasToServer('png');
+        });
+        
+        // Save canvas as JPG
+        saveCanvasJPG.addEventListener('click', () => {
+            saveCanvasToServer('jpg');
+        });
+        
+        // Function to save canvas to server
+        function saveCanvasToServer(format) {
+            const imageData = canvas.toDataURL(`image/${format === 'jpg' ? 'jpeg' : format}`, 
+                                             format === 'jpg' ? 0.9 : 1.0);
+            
+            fetch('/save_canvas', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image_data: imageData,
+                    format: format
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    showMessage(`✅ Drawing saved as ${data.filename}`, 'success');
+                } else {
+                    showMessage(`❌ Error: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage(`❌ Error saving drawing: ${error.message}`, 'error');
+            });
+        }
+        
+        // Function to show messages
+        function showMessage(message, type) {
+            // Remove any existing message
+            const existingMessage = document.getElementById('saveMessage');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            // Create new message element
+            const messageDiv = document.createElement('div');
+            messageDiv.id = 'saveMessage';
+            messageDiv.className = `fixed top-4 right-4 px-4 py-2 rounded-md text-white font-medium z-50 ${
+                type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            }`;
+            messageDiv.textContent = message;
+            
+            document.body.appendChild(messageDiv);
+            
+            // Remove message after 3 seconds
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 3000);
+        }
+        
+        // Update current settings display
+        function updateCurrentSettings() {
+            currentToolDisplay.textContent = currentTool === 'marker' ? 'Marker' : 'Eraser';
+            currentColorDisplay.textContent = currentColor;
+            const currentSize = currentTool === 'marker' ? markerSize : eraserSize;
+            currentSizeDisplay.textContent = currentSize + 'px';
+        }
+        
+        // Initialize display
+        updateCurrentSettings();
+    </script>
+</body>
+</html>
