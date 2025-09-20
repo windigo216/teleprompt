@@ -17,11 +17,39 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
+        .color-preset {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .color-preset:hover {
+            transform: scale(1.1);
+        }
+        .color-preset.active {
+            border-color: #374151;
+            box-shadow: 0 0 0 2px #ffffff;
+        }
+        .tool-button {
+            transition: all 0.2s ease;
+        }
+        .tool-button.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .tool-button:hover {
+            background-color: #e5e7eb;
+        }
+        .tool-button.active:hover {
+            background-color: #2563eb;
+        }
     </style>
 </head>
 <body class="min-h-screen gradient-bg">
     <div class="container mx-auto px-4 py-8">
-        <div class="max-w-4xl mx-auto">
+        <div class="max-w-6xl mx-auto">
             <!-- Header -->
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
                 <div class="flex justify-between items-center">
@@ -33,25 +61,27 @@
             </div>
 
             <!-- Game Area -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Image Display -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Text Display -->
                 <div class="bg-white rounded-lg shadow-lg p-6">
-                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Current Image</h2>
-                    <div id="imageContainer" class="aspect-square bg-gray-100 rounded-lg flex items-center justify-center">
-                        <div id="imagePlaceholder" class="text-gray-500 text-center">
-                            <div class="text-4xl mb-2">🖼️</div>
-                            <p>Waiting for image...</p>
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Current Description</h2>
+                    <div id="textContainer" class="aspect-square bg-gray-100 rounded-lg flex items-center justify-center p-4">
+                        <div id="textPlaceholder" class="text-gray-500 text-center">
+                            <div class="text-4xl mb-2">📝</div>
+                            <p>Waiting for description...</p>
                         </div>
-                        <div id="loadingWheel" class="hidden text-center">
+                        <div id="processingWheel" class="hidden text-center">
                             <div class="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
-                            <p class="mt-4 text-gray-600 font-medium">Generating image...</p>
-                            <p id="generatingPlayer" class="text-sm text-gray-500"></p>
+                            <p class="mt-4 text-gray-600 font-medium">Processing drawing...</p>
+                            <p id="processingPlayer" class="text-sm text-gray-500"></p>
                         </div>
-                        <img id="currentImage" class="hidden w-full h-full object-contain rounded-lg" alt="Current image">
+                        <div id="currentText" class="hidden w-full h-full flex items-center justify-center">
+                            <p id="textContent" class="text-lg text-gray-800 text-center font-medium"></p>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Prompt Input -->
+                <!-- Drawing Canvas -->
                 <div class="bg-white rounded-lg shadow-lg p-6">
                     <h2 class="text-lg font-semibold text-gray-800 mb-4">Your Turn</h2>
                     
@@ -60,17 +90,50 @@
                         <p>Waiting for your turn...</p>
                     </div>
 
-                    <div id="promptSection" class="hidden">
+                    <div id="drawingSection" class="hidden">
+                        <!-- Drawing Tools -->
                         <div class="mb-4">
-                            <label for="promptInput" class="block text-sm font-medium text-gray-700 mb-2">
-                                Describe what you see in the image:
-                            </label>
-                            <textarea id="promptInput" 
-                                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                      rows="4" 
-                                      placeholder="A beautiful sunset over mountains..."></textarea>
+                            <div class="flex space-x-2 mb-3">
+                                <button id="markerTool" class="tool-button active flex-1 px-3 py-2 rounded-md border border-gray-300 text-sm font-medium">
+                                    🖊️ Marker
+                                </button>
+                                <button id="eraserTool" class="tool-button flex-1 px-3 py-2 rounded-md border border-gray-300 text-sm font-medium">
+                                    🧽 Eraser
+                                </button>
+                            </div>
+                            
+                            <!-- Color Picker -->
+                            <div class="flex items-center space-x-2 mb-3">
+                                <input type="color" id="colorPicker" value="#000000" class="w-8 h-8 rounded-md border border-gray-300 cursor-pointer">
+                                <div class="flex space-x-1">
+                                    <div class="color-preset active" style="background-color: #000000;" data-color="#000000"></div>
+                                    <div class="color-preset" style="background-color: #ef4444;" data-color="#ef4444"></div>
+                                    <div class="color-preset" style="background-color: #f97316;" data-color="#f97316"></div>
+                                    <div class="color-preset" style="background-color: #eab308;" data-color="#eab308"></div>
+                                    <div class="color-preset" style="background-color: #22c55e;" data-color="#22c55e"></div>
+                                    <div class="color-preset" style="background-color: #3b82f6;" data-color="#3b82f6"></div>
+                                    <div class="color-preset" style="background-color: #8b5cf6;" data-color="#8b5cf6"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Size Control -->
+                            <div class="mb-3">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Size</label>
+                                <input type="range" id="sizeSlider" min="1" max="20" value="5" class="w-full">
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>1px</span>
+                                    <span id="sizeValue">5px</span>
+                                    <span>20px</span>
+                                </div>
+                            </div>
                         </div>
 
+                        <!-- Canvas -->
+                        <div class="border-2 border-gray-300 rounded-lg overflow-hidden mb-4">
+                            <canvas id="drawingCanvas" width="400" height="300" class="w-full h-auto bg-white cursor-crosshair" style="max-height: 300px;"></canvas>
+                        </div>
+
+                        <!-- Timer and Submit -->
                         <div class="mb-4">
                             <div class="flex justify-between items-center text-sm text-gray-600">
                                 <span>Time remaining:</span>
@@ -81,19 +144,23 @@
                             </div>
                         </div>
 
-                        <button id="submitPrompt" 
-                                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
-                            Submit Prompt
-                        </button>
+                        <div class="flex space-x-2">
+                            <button id="clearCanvas" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                                Clear
+                            </button>
+                            <button id="submitDrawing" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                                Submit Drawing
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Game Status -->
-            <div class="mt-6 bg-white rounded-lg shadow-lg p-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Game Progress</h3>
-                <div id="gameProgress" class="space-y-2">
-                    <!-- Progress will be populated by JavaScript -->
+                <!-- Game Progress -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Game Progress</h3>
+                    <div id="gameProgress" class="space-y-2">
+                        <!-- Progress will be populated by JavaScript -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -111,11 +178,50 @@
         const urlParams = new URLSearchParams(window.location.search);
         let playerName = urlParams.get('player') || 'Anonymous';
         
+        console.log('🚀 Inverted game page loaded');
+        console.log('🚀 Room code:', roomCode);
+        console.log('🚀 Player name:', playerName);
+        console.log('🚀 Socket connected:', socket.connected);
+        
+        // Socket connection events
+        socket.on('connect', function() {
+            console.log('✅ Socket connected!');
+        });
+        
+        socket.on('disconnect', function() {
+            console.log('❌ Socket disconnected!');
+        });
+        
+        socket.on('connect_error', function(error) {
+            console.log('❌ Socket connection error:', error);
+        });
+        
+        // Canvas setup
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let currentTool = 'marker';
+        let currentColor = '#000000';
+        let currentSize = 5;
+
+        // Initialize canvas
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         // Join room
+        console.log('🚀 Emitting join_room with:', { player_name: playerName, room_code: roomCode });
         socket.emit('join_room', {
             player_name: playerName,
             room_code: roomCode
+        });
+
+        // Request current game state if game is already running
+        console.log('🚀 Emitting get_game_state with:', { room_code: roomCode, player_name: playerName });
+        socket.emit('get_game_state', {
+            room_code: roomCode,
+            player_name: playerName
         });
 
         // Socket event listeners
@@ -124,33 +230,31 @@
                 data: data,
                 myPlayerName: playerName,
                 currentPlayer: data.current_player,
-                startingImage: data.starting_image
+                startingImage: data.starting_image,
+                startingPrompt: data.starting_prompt
             });
             updateGameProgress(data.players);
             
             // Set timeout from settings
             const timeout = data.settings ? data.settings.time_limit : 20;
             
-            // Display the starting image
-            if (data.starting_image) {
+            // For inverted mode, show starting prompt for first player to draw
+            if (data.starting_prompt) {
+                console.log('📝 Displaying starting prompt for inverted mode:', data.starting_prompt);
+                updateCurrentText(data.starting_prompt);
+            } else if (data.starting_image) {
                 console.log('🖼️ Displaying starting image:', data.starting_image);
-                updateCurrentImage(data.starting_image);
+                updateCurrentText(data.starting_image);
             } else {
-                console.log('⚠️ No starting image provided');
+                console.log('⚠️ No starting content provided');
             }
             
             // Calculate if it's my turn based on current player
             const isMyTurn = data.current_player === playerName;
-            console.log('🎯 Calculated isMyTurn:', isMyTurn, '(current_player:', data.current_player, '=== myPlayerName:', playerName, ')');
-            console.log('🔍 String comparison details:', {
-                currentPlayer: data.current_player,
-                myPlayerName: playerName,
-                currentPlayerType: typeof data.current_player,
-                myPlayerNameType: typeof playerName,
-                areEqual: data.current_player === playerName,
-                strictEqual: data.current_player === playerName
-            });
+            console.log('🎯 Calculated isMyTurn:', isMyTurn, 'current_player:', data.current_player, 'myPlayerName:', playerName);
+            console.log('🚨 About to call checkIfMyTurn with:', data.current_player, isMyTurn);
             checkIfMyTurn(data.current_player, isMyTurn);
+            
             // Start timer for first player when game starts
             if (isMyTurn) {
                 console.log('⏰ Starting timer for first player');
@@ -160,34 +264,31 @@
             }
         });
 
-        socket.on('game_state_update', function(data) {
-            updateCurrentImage(data.image);
+        socket.on('game_state_update_inverted', function(data) {
+            console.log('🎮 game_state_update_inverted received:', data);
+            updateCurrentText(data.description);
             updateGameProgress(data.players);
-            // Use the is_my_turn flag from the server instead of calculating it
-            if (data.is_my_turn !== undefined) {
-                checkIfMyTurn(data.current_player, data.is_my_turn);
-            } else {
-                checkIfMyTurn(data.current_player);
+            
+            // Use the is_my_turn flag from the server
+            const isMyTurn = data.is_my_turn;
+            console.log('🎯 game_state_update_inverted - isMyTurn:', isMyTurn);
+            checkIfMyTurn(data.current_player, isMyTurn);
+            
+            // Start timer if it's my turn
+            if (isMyTurn) {
+                console.log('⏰ Starting timer from game state update');
+                startTimer(data.timeout);
             }
-            // Don't start timer on game state update - only when image is fully generated
         });
 
-        socket.on('image_generating', function(data) {
-            showLoadingWheel(data.player, data.prompt);
-        });
-
-        socket.on('image_generation_error', function(data) {
-            hideLoadingWheel();
-            alert('Image generation failed: ' + data.error);
-        });
-
-        socket.on('next_turn', function(data) {
-            hideLoadingWheel();
-            updateCurrentImage(data.image);
+        socket.on('next_turn_inverted', function(data) {
+            hideProcessingWheel();
+            updateCurrentText(data.description);
             updateGameProgress();
+            
             // Calculate if it's my turn based on current player
             const isMyTurn = data.current_player === playerName;
-            console.log('next_turn - Calculated isMyTurn:', isMyTurn);
+            console.log('next_turn_inverted - Calculated isMyTurn:', isMyTurn);
             checkIfMyTurn(data.current_player, isMyTurn);
             
             // Only start timer if start_timer flag is true and it's my turn
@@ -195,6 +296,15 @@
                 console.log('Starting timer for next player');
                 startTimer(data.timeout);
             }
+        });
+
+        socket.on('image_processing', function(data) {
+            showProcessingWheel(data.player, data.message);
+        });
+
+        socket.on('image_processing_error', function(data) {
+            hideProcessingWheel();
+            alert('Image processing failed: ' + data.error);
         });
 
         socket.on('game_completed', function(data) {
@@ -207,6 +317,12 @@
         });
 
         function checkIfMyTurn(player, isMyTurnOverride) {
+            console.log('🚨 checkIfMyTurn function called!', {
+                player: player,
+                isMyTurnOverride: isMyTurnOverride,
+                playerName: playerName
+            });
+            
             currentPlayer = player;
             const isMyTurn = isMyTurnOverride !== undefined ? isMyTurnOverride : (player === playerName);
             
@@ -214,56 +330,51 @@
                 currentPlayer: player,
                 myPlayerName: playerName,
                 isMyTurn: isMyTurn,
-                isMyTurnOverride: isMyTurnOverride,
-                comparison: `${player} === ${playerName} = ${player === playerName}`,
-                playerType: typeof player,
-                playerNameType: typeof playerName
+                isMyTurnOverride: isMyTurnOverride
             });
             
             // Check if elements exist
             const waitingMessage = document.getElementById('waitingMessage');
-            const promptSection = document.getElementById('promptSection');
-            const promptInput = document.getElementById('promptInput');
+            const drawingSection = document.getElementById('drawingSection');
             
-            console.log('🔍 DOM elements:', {
+            console.log('🔍 DOM elements found:', {
                 waitingMessage: !!waitingMessage,
-                promptSection: !!promptSection,
-                promptInput: !!promptInput
+                drawingSection: !!drawingSection
             });
             
             if (isMyTurn) {
-                console.log('✅ Showing prompt input for player');
+                console.log('✅ Showing drawing section for player');
                 if (waitingMessage) waitingMessage.classList.add('hidden');
-                if (promptSection) promptSection.classList.remove('hidden');
-                if (promptInput) promptInput.focus();
+                if (drawingSection) drawingSection.classList.remove('hidden');
             } else {
                 console.log('⏳ Showing waiting message for player');
                 if (waitingMessage) {
                     waitingMessage.classList.remove('hidden');
                     waitingMessage.innerHTML = `
                         <div class="text-4xl mb-2">👤</div>
-                        <p>Waiting for <strong>${player}</strong> to submit their prompt...</p>
+                        <p>Waiting for <strong>${player}</strong> to submit their drawing...</p>
                     `;
                 }
-                if (promptSection) promptSection.classList.add('hidden');
+                if (drawingSection) drawingSection.classList.add('hidden');
             }
         }
 
-        function updateCurrentImage(imagePath) {
-            const imageContainer = document.getElementById('imageContainer');
-            const placeholder = document.getElementById('imagePlaceholder');
-            const image = document.getElementById('currentImage');
-            const loadingWheel = document.getElementById('loadingWheel');
+        function updateCurrentText(description) {
+            const textContainer = document.getElementById('textContainer');
+            const placeholder = document.getElementById('textPlaceholder');
+            const currentText = document.getElementById('currentText');
+            const textContent = document.getElementById('textContent');
+            const processingWheel = document.getElementById('processingWheel');
             
-            // Hide loading wheel
-            loadingWheel.classList.add('hidden');
+            // Hide processing wheel
+            processingWheel.classList.add('hidden');
             
-            if (imagePath) {
-                image.src = `/${imagePath}`;
-                image.classList.remove('hidden');
+            if (description) {
+                textContent.textContent = description;
+                currentText.classList.remove('hidden');
                 placeholder.classList.add('hidden');
             } else {
-                image.classList.add('hidden');
+                currentText.classList.add('hidden');
                 placeholder.classList.remove('hidden');
             }
         }
@@ -285,18 +396,18 @@
             }
         }
 
-        function showLoadingWheel(player, prompt) {
+        function showProcessingWheel(player, message) {
             // Hide other elements
-            document.getElementById('imagePlaceholder').classList.add('hidden');
-            document.getElementById('currentImage').classList.add('hidden');
+            document.getElementById('textPlaceholder').classList.add('hidden');
+            document.getElementById('currentText').classList.add('hidden');
             
-            // Show loading wheel
-            document.getElementById('loadingWheel').classList.remove('hidden');
-            document.getElementById('generatingPlayer').textContent = `${player} is generating an image...`;
+            // Show processing wheel
+            document.getElementById('processingWheel').classList.remove('hidden');
+            document.getElementById('processingPlayer').textContent = `${player} is processing...`;
         }
 
-        function hideLoadingWheel() {
-            document.getElementById('loadingWheel').classList.add('hidden');
+        function hideProcessingWheel() {
+            document.getElementById('processingWheel').classList.add('hidden');
         }
 
         function startTimer(seconds) {
@@ -319,39 +430,138 @@
 
         function handleTimeout() {
             if (currentPlayer === playerName) {
-                socket.emit('timeout_prompt', {
+                socket.emit('timeout_drawing', {
                     room_code: roomCode
                 });
             }
         }
 
-        // Submit prompt
-        document.getElementById('submitPrompt').addEventListener('click', function() {
-            const prompt = document.getElementById('promptInput').value.trim();
-            if (!prompt) {
-                alert('Please enter a prompt');
-                return;
+        // Drawing functionality
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath();
+        }
+        
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            
+            if (currentTool === 'marker') {
+                ctx.lineWidth = currentSize;
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = currentColor;
+            } else if (currentTool === 'eraser') {
+                ctx.lineWidth = currentSize * 2;
+                ctx.globalCompositeOperation = 'destination-out';
             }
             
-            socket.emit('submit_prompt', {
-                room_code: roomCode,
-                player_name: playerName,
-                prompt: prompt
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        // Canvas event listeners
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
             });
-            
-            // Clear input and hide prompt section
-            document.getElementById('promptInput').value = '';
-            document.getElementById('promptSection').classList.add('hidden');
-            document.getElementById('waitingMessage').classList.remove('hidden');
-            clearInterval(timer);
+            canvas.dispatchEvent(mouseEvent);
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        });
+        
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const mouseEvent = new MouseEvent('mouseup', {});
+            canvas.dispatchEvent(mouseEvent);
         });
 
-        // Allow Enter key to submit
-        document.getElementById('promptInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                document.getElementById('submitPrompt').click();
+        // Tool selection
+        document.getElementById('markerTool').addEventListener('click', () => {
+            currentTool = 'marker';
+            document.getElementById('markerTool').classList.add('active');
+            document.getElementById('eraserTool').classList.remove('active');
+        });
+        
+        document.getElementById('eraserTool').addEventListener('click', () => {
+            currentTool = 'eraser';
+            document.getElementById('eraserTool').classList.add('active');
+            document.getElementById('markerTool').classList.remove('active');
+        });
+
+        // Color picker
+        document.getElementById('colorPicker').addEventListener('change', (e) => {
+            currentColor = e.target.value;
+        });
+
+        // Color presets
+        document.querySelectorAll('.color-preset').forEach(preset => {
+            preset.addEventListener('click', () => {
+                document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
+                preset.classList.add('active');
+                currentColor = preset.dataset.color;
+                document.getElementById('colorPicker').value = currentColor;
+            });
+        });
+
+        // Size slider
+        document.getElementById('sizeSlider').addEventListener('input', (e) => {
+            currentSize = parseInt(e.target.value);
+            document.getElementById('sizeValue').textContent = currentSize + 'px';
+        });
+
+        // Clear canvas
+        document.getElementById('clearCanvas').addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear the canvas?')) {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
             }
+        });
+
+        // Submit drawing
+        document.getElementById('submitDrawing').addEventListener('click', function() {
+            const imageData = canvas.toDataURL('image/png');
+            
+            socket.emit('submit_drawing', {
+                room_code: roomCode,
+                player_name: playerName,
+                image_data: imageData
+            });
+            
+            // Hide drawing section and show waiting message
+            document.getElementById('drawingSection').classList.add('hidden');
+            document.getElementById('waitingMessage').classList.remove('hidden');
+            clearInterval(timer);
         });
     </script>
 </body>

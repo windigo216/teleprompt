@@ -16,8 +16,13 @@
         <div class="max-w-6xl mx-auto">
             <!-- Header -->
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6 text-center">
+                {% if game.gamemode == 'inverted' %}
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">🎨 Inverted Game Complete!</h1>
+                <p class="text-gray-600">Here's the creative journey from drawing to AI analysis</p>
+                {% else %}
                 <h1 class="text-3xl font-bold text-gray-800 mb-2">🎨 Game Complete!</h1>
                 <p class="text-gray-600">Here's the creative journey your group took</p>
+                {% endif %}
                 <a href="/" class="inline-block mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
                     Play Again
                 </a>
@@ -59,8 +64,18 @@
                                 {% endif %}
                             </div>
 
-                            <!-- Prompt -->
+                            <!-- Prompt/Description -->
                             <div>
+                                {% if game.gamemode == 'inverted' %}
+                                <h4 class="text-2xl font-bold text-gray-700 mb-4">AI Analysis:</h4>
+                                <div class="bg-blue-50 rounded-lg p-6">
+                                    {% if i < game.descriptions|length and game.descriptions[i] %}
+                                    <p class="text-4xl text-gray-800 italic font-medium leading-relaxed">"{{ game.descriptions[i].text }}"</p>
+                                    {% else %}
+                                    <p class="text-4xl text-gray-500 italic font-medium">No AI analysis available (timeout)</p>
+                                    {% endif %}
+                                </div>
+                                {% else %}
                                 <h4 class="text-2xl font-bold text-gray-700 mb-4">Prompt:</h4>
                                 <div class="bg-gray-50 rounded-lg p-6">
                                     {% if i < game.prompts|length and game.prompts[i] %}
@@ -69,6 +84,7 @@
                                     <p class="text-4xl text-gray-500 italic font-medium">No prompt provided (timeout)</p>
                                     {% endif %}
                                 </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -131,8 +147,13 @@
                         <div class="text-sm text-gray-600">Players</div>
                     </div>
                     <div class="text-center p-4 bg-green-50 rounded-lg">
+                        {% if game.gamemode == 'inverted' %}
+                        <div class="text-2xl font-bold text-green-600">{{ game.descriptions|length }}</div>
+                        <div class="text-sm text-gray-600">AI Analyses</div>
+                        {% else %}
                         <div class="text-2xl font-bold text-green-600">{{ game.prompts|length }}</div>
                         <div class="text-sm text-gray-600">Prompts</div>
+                        {% endif %}
                     </div>
                     <div class="text-center p-4 bg-purple-50 rounded-lg">
                         <div class="text-2xl font-bold text-purple-600">{{ game.images|length }}</div>

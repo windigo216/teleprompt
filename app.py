@@ -313,42 +313,116 @@ def get_random_static_image():
     
     return random.choice(image_files)
 
+def describe_image(image_path):
+    """
+    Generate a text description of an image using GPT-4 Vision
+    Based on test2.py implementation
+    """
+    try:
+        # Encode the image
+        with open(image_path, "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+        
+        # Call the OpenAI API
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text", 
+                            "text": "Describe this image in detail. It is a very rough outlined line drawing. The user had a specific non-abstract non-random goal when drawing this image. If the user had more time to continue (or was better at drawing), what would this be? Describe objects, colors, composition, style, and any text present. Your description should be detailed enough that someone could use it to try to recreate a similar image with an AI image generator. However, it must be short enough that someone can read it within 5 seconds or less (keep it to 20-30 words)."
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}",
+                                "detail": "high"
+                            }
+                        }
+                    ]
+                }
+            ],
+            max_tokens=500
+        )
+        
+        description = response.choices[0].message.content
+        return description
+        
+    except Exception as e:
+        print(f"Error describing image: {e}")
+        return None
+
 def start_game(room_code):
     """Initialize and start a new game"""
     players = rooms[room_code]
     game_id = str(uuid.uuid4())
+    settings = room_settings.get(room_code, {'time_limit': 20, 'gamemode': 'normal'})
+    gamemode = settings.get('gamemode', 'normal')
     
-    # Always use stock1.svg for player 1
-    # CHANGE THIS TO THE DOMAIN OF THE SERVER
-    # domain = 'http://localhost:8000'
-    starting_image = f'static/img/stock1.svg'
-    
-    games[room_code] = {
-        'id': game_id,
-        'players': [{'name': p['name'], 'id': p['id']} for p in players],
-        'current_round': 0,
-        'current_player': 0,
-        'prompts': [],
-        'images': [{'path': starting_image, 'prompt': 'Starting image'}],
-        'status': 'waiting_for_prompt',
-        'start_time': time.time(),
-        'round_start_time': time.time()
-    }
-    
-    # Send game_started event to all players in the room
-    print(f"Starting game for room {room_code} with players: {[p['name'] for p in players]}")
-    print(f"Starting image: {starting_image}")
-    
-    game_started_data = {
-        'game_id': game_id,
-        'players': [p['name'] for p in players],
-        'current_player': players[0]['name'],
-        'starting_image': starting_image,
-        'settings': room_settings.get(room_code, {'time_limit': 20, 'gamemode': 'normal'})
-    }
-    print(f"Emitting game_started event: {game_started_data}")
-    emit('game_started', game_started_data, room=room_code)
-    print(f"game_started event emitted to room {room_code}")
+    if gamemode == 'inverted':
+        # For inverted mode, provide a starting prompt for the first player to draw
+        starting_prompt = "Draw whatever you want for the AI to analyze!"
+        
+        games[room_code] = {
+            'id': game_id,
+            'players': [{'name': p['name'], 'id': p['id']} for p in players],
+            'current_round': 0,
+            'current_player': 0,
+            'prompts': [],
+            'images': [],
+            'descriptions': [],  # Store text descriptions
+            'status': 'waiting_for_drawing',
+            'start_time': time.time(),
+            'round_start_time': time.time(),
+            'gamemode': 'inverted'
+        }
+        
+        # Send game_started event to all players in the room
+        print(f"Starting inverted game for room {room_code} with players: {[p['name'] for p in players]}")
+        
+        game_started_data = {
+            'game_id': game_id,
+            'players': [p['name'] for p in players],
+            'current_player': players[0]['name'],
+            'starting_prompt': starting_prompt,  # Starting prompt for first player to draw
+            'settings': settings
+        }
+        print(f"Emitting game_started event: {game_started_data}")
+        emit('game_started', game_started_data, room=room_code)
+        print(f"game_started event emitted to room {room_code}")
+    else:
+        # Normal mode - use stock1.svg for player 1
+        starting_image = f'static/img/stock1.svg'
+        
+        games[room_code] = {
+            'id': game_id,
+            'players': [{'name': p['name'], 'id': p['id']} for p in players],
+            'current_round': 0,
+            'current_player': 0,
+            'prompts': [],
+            'images': [{'path': starting_image, 'prompt': 'Starting image'}],
+            'status': 'waiting_for_prompt',
+            'start_time': time.time(),
+            'round_start_time': time.time(),
+            'gamemode': 'normal'
+        }
+        
+        # Send game_started event to all players in the room
+        print(f"Starting normal game for room {room_code} with players: {[p['name'] for p in players]}")
+        print(f"Starting image: {starting_image}")
+        
+        game_started_data = {
+            'game_id': game_id,
+            'players': [p['name'] for p in players],
+            'current_player': players[0]['name'],
+            'starting_image': starting_image,
+            'settings': settings
+        }
+        print(f"Emitting game_started event: {game_started_data}")
+        emit('game_started', game_started_data, room=room_code)
+        print(f"game_started event emitted to room {room_code}")
 
 @socketio.on('submit_prompt')
 def handle_submit_prompt(data):
@@ -447,6 +521,124 @@ def handle_submit_prompt(data):
     # Start image generation in a background task
     socketio.start_background_task(generate_and_continue)
 
+@socketio.on('submit_drawing')
+def handle_submit_drawing(data):
+    """Handle drawing submission for inverted game mode"""
+    room_code = data['room_code']
+    player_name = data['player_name']
+    image_data = data['image_data']
+    
+    if room_code not in games:
+        return
+    
+    game = games[room_code]
+    
+    # Check if it's inverted mode
+    if game.get('gamemode') != 'inverted':
+        emit('error', {'message': 'Not in inverted mode'})
+        return
+    
+    # Check if it's this player's turn
+    current_player = game['players'][game['current_player']]
+    if current_player['name'] != player_name:
+        emit('error', {'message': 'Not your turn'})
+        return
+    
+    # Save the drawing
+    try:
+        # Remove data URL prefix (e.g., "data:image/png;base64,")
+        if ',' in image_data:
+            image_data = image_data.split(',')[1]
+        
+        # Decode base64 image data
+        image_bytes = base64.b64decode(image_data)
+        
+        # Create filename with timestamp
+        timestamp = int(time.time())
+        filename = f'drawing_{timestamp}_{player_name}.png'
+        
+        # Ensure the directory exists
+        save_dir = 'static/canvas_drawings'
+        os.makedirs(save_dir, exist_ok=True)
+        
+        # Save the file
+        file_path = os.path.join(save_dir, filename)
+        with open(file_path, 'wb') as f:
+            f.write(image_bytes)
+        
+        # Add image to game
+        game['images'].append({
+            'player': player_name,
+            'path': f'static/canvas_drawings/{filename}',
+            'round': game['current_round']
+        })
+        
+        # Emit processing event to all players
+        emit('image_processing', {
+            'player': player_name,
+            'message': 'Processing your drawing...'
+        }, room=room_code)
+        
+        # Process the drawing asynchronously
+        def process_drawing_and_continue():
+            try:
+                # Describe the image using ChatGPT
+                description = describe_image(file_path)
+                if not description:
+                    description = "A simple drawing"
+                
+                # Add description to game
+                game['descriptions'].append({
+                    'player': player_name,
+                    'text': description,
+                    'round': game['current_round']
+                })
+                
+                # Move to next player
+                game['current_player'] = (game['current_player'] + 1) % len(game['players'])
+                game['current_round'] += 1
+                game['round_start_time'] = time.time()
+                
+                # Check if game is complete
+                if game['current_round'] >= len(game['players']):
+                    game['status'] = 'completed'
+                    game['completion_time'] = time.time()
+                    socketio.emit('game_completed', {
+                        'game_id': game['id'],
+                        'prompts': game['descriptions'],  # Use descriptions instead of prompts
+                        'images': game['images']
+                    }, room=room_code)
+                    # Clean up after game completion
+                    if room_code in rooms:
+                        del rooms[room_code]
+                    if room_code in room_creators:
+                        del room_creators[room_code]
+                    if room_code in room_settings:
+                        del room_settings[room_code]
+                else:
+                    next_player = game['players'][game['current_player']]['name']
+                    # Emit next turn with description to all players
+                    socketio.emit('next_turn_inverted', {
+                        'current_player': next_player,
+                        'round': game['current_round'],
+                        'description': description,
+                        'timeout': room_settings.get(room_code, {}).get('time_limit', 20),
+                        'start_timer': True
+                    }, room=room_code)
+            except Exception as e:
+                print(f"Error in process_drawing_and_continue: {e}")
+                # Emit error event
+                socketio.emit('image_processing_error', {
+                    'error': 'Image processing failed'
+                }, room=room_code)
+        
+        # Start image processing in a background task
+        socketio.start_background_task(process_drawing_and_continue)
+        
+    except Exception as e:
+        print(f"Error saving drawing: {e}")
+        emit('error', {'message': 'Failed to save drawing'})
+
 @socketio.on('timeout_prompt')
 def handle_timeout_prompt(data):
     room_code = data['room_code']
@@ -498,6 +690,64 @@ def handle_timeout_prompt(data):
             'start_timer': True  # Start timer for timeout case too
         }, room=room_code)
 
+@socketio.on('timeout_drawing')
+def handle_timeout_drawing(data):
+    """Handle drawing timeout for inverted game mode"""
+    room_code = data['room_code']
+    
+    if room_code not in games:
+        return
+    
+    game = games[room_code]
+    current_player = game['players'][game['current_player']]['name']
+    
+    # Create a placeholder drawing
+    placeholder_path = "static/img/placeholder.svg"
+    game['images'].append({
+        'player': current_player,
+        'path': placeholder_path,
+        'round': game['current_round']
+    })
+    
+    # Add a default description
+    game['descriptions'].append({
+        'player': current_player,
+        'text': "A simple drawing",
+        'round': game['current_round']
+    })
+    
+    # Move to next player
+    game['current_player'] = (game['current_player'] + 1) % len(game['players'])
+    game['current_round'] += 1
+    game['round_start_time'] = time.time()
+    
+    # Check if game is complete
+    if game['current_round'] >= len(game['players']):
+        game['status'] = 'completed'
+        game['completion_time'] = time.time()
+        emit('game_completed', {
+            'game_id': game['id'],
+            'prompts': game['descriptions'],
+            'images': game['images']
+        }, room=room_code)
+        # Clean up after game completion
+        if room_code in rooms:
+            del rooms[room_code]
+        if room_code in room_creators:
+            del room_creators[room_code]
+        if room_code in room_settings:
+            del room_settings[room_code]
+    else:
+        next_player = game['players'][game['current_player']]['name']
+        # Emit next turn with description to all players
+        emit('next_turn_inverted', {
+            'current_player': next_player,
+            'round': game['current_round'],
+            'description': "A simple drawing",
+            'timeout': room_settings.get(room_code, {}).get('time_limit', 20),
+            'start_timer': True
+        }, room=room_code)
+
 @socketio.on('disconnect')
 def handle_disconnect():
     # Remove player from all rooms
@@ -521,6 +771,59 @@ def handle_disconnect():
                 'creator': room_creators.get(room_code),
                 'settings': room_settings.get(room_code, {'time_limit': 20, 'gamemode': 'normal'})
             }, room=room_code)
+
+@socketio.on('get_game_state')
+def handle_get_game_state(data):
+    """Handle request for current game state"""
+    print(f"🔍 get_game_state called with: {data}")
+    room_code = data['room_code']
+    player_name = data.get('player_name', 'Unknown')
+    
+    if room_code not in games:
+        print(f"❌ No game found for room {room_code}")
+        emit('error', {'message': 'No game found for this room'})
+        return
+    
+    game = games[room_code]
+    current_player = game['players'][game['current_player']]['name']
+    print(f"🎮 Game found: {game.get('gamemode', 'normal')} mode, current player: {current_player}")
+    
+    # Send current game state
+    if game.get('gamemode') == 'inverted':
+        # For inverted mode, send the current description or starting prompt
+        current_description = None
+        if game['descriptions']:
+            current_description = game['descriptions'][-1]['text']
+        elif game['current_round'] == 0:
+            # First round - send starting prompt
+            current_description = "Draw whatever you want for the AI to analyze!"
+        
+        game_state_data = {
+            'current_player': current_player,
+            'round': game['current_round'],
+            'description': current_description,
+            'players': [p['name'] for p in game['players']],
+            'is_my_turn': current_player == player_name,
+            'timeout': room_settings.get(room_code, {}).get('time_limit', 20)
+        }
+        print(f"📤 Emitting game_state_update_inverted: {game_state_data}")
+        emit('game_state_update_inverted', game_state_data)
+    else:
+        # For normal mode, send current image
+        current_image = None
+        if game['images']:
+            current_image = game['images'][-1]['path']
+        
+        game_state_data = {
+            'current_player': current_player,
+            'round': game['current_round'],
+            'image': current_image,
+            'players': [p['name'] for p in game['players']],
+            'is_my_turn': current_player == player_name,
+            'timeout': room_settings.get(room_code, {}).get('time_limit', 20)
+        }
+        print(f"📤 Emitting game_state_update: {game_state_data}")
+        emit('game_state_update', game_state_data)
 
 @socketio.on('update_settings')
 def handle_update_settings(data):
