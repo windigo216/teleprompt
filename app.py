@@ -138,7 +138,12 @@ def inverted_game(room_code):
 @app.route('/results/<room_code>')
 def results(room_code):
     if room_code in games:
-        return render_template('results.html', game=games[room_code])
+        game = games[room_code]
+        # Clean up old completed games (older than 1 hour)
+        if game.get('status') == 'completed' and time.time() - game.get('completion_time', game.get('start_time', 0)) > 3600:
+            del games[room_code]
+            return "Game not found", 404
+        return render_template('results.html', game=game)
     return "Game not found", 404
 
 @app.route('/canvas')
@@ -409,14 +414,13 @@ def handle_submit_prompt(data):
             # Check if game is complete
             if game['current_round'] >= len(game['players']):
                 game['status'] = 'completed'
+                game['completion_time'] = time.time()
                 socketio.emit('game_completed', {
                     'game_id': game['id'],
                     'prompts': game['prompts'],
                     'images': game['images']
                 }, room=room_code)
-                # Clean up after game completion
-                if room_code in games:
-                    del games[room_code]
+                # Clean up after game completion (keep game data for results page)
                 if room_code in rooms:
                     del rooms[room_code]
                 if room_code in room_creators:
@@ -470,14 +474,13 @@ def handle_timeout_prompt(data):
     # Check if game is complete
     if game['current_round'] >= len(game['players']):
         game['status'] = 'completed'
+        game['completion_time'] = time.time()
         emit('game_completed', {
             'game_id': game['id'],
             'prompts': game['prompts'],
             'images': game['images']
         }, room=room_code)
-        # Clean up after game completion
-        if room_code in games:
-            del games[room_code]
+        # Clean up after game completion (keep game data for results page)
         if room_code in rooms:
             del rooms[room_code]
         if room_code in room_creators:
