@@ -143,9 +143,11 @@ def handle_join_room(data):
     is_creator = data.get('is_creator', False)
     
     if room_code not in rooms:
+        if not is_creator:
+            emit('error', {'message': 'Room does not exist. Please create a new room or check the room code.'})
+            return
         rooms[room_code] = []
-        if is_creator:
-            room_creators[room_code] = player_name
+        room_creators[room_code] = player_name
     
     if len(rooms[room_code]) >= MIN_PLAYERS and not any(p['name'] == player_name for p in rooms[room_code]):
         emit('room_full', {'message': 'Room is full'})
@@ -181,7 +183,8 @@ def handle_join_room(data):
     # Notify other players in the room about the new player
     emit('player_list_updated', {
         'players': [p['name'] for p in rooms[room_code]],
-        'ready_to_start': len(rooms[room_code]) >= MIN_PLAYERS
+        'ready_to_start': len(rooms[room_code]) >= MIN_PLAYERS,
+        'creator': room_creators.get(room_code)
     }, room=room_code)
     
     # If game is already running, send current game state to the joining player
@@ -431,7 +434,8 @@ def handle_disconnect():
         else:
             emit('player_list_updated', {
                 'players': [p['name'] for p in rooms[room_code]],
-                'ready_to_start': len(rooms[room_code]) >= MIN_PLAYERS
+                'ready_to_start': len(rooms[room_code]) >= MIN_PLAYERS,
+                'creator': room_creators.get(room_code)
             }, room=room_code)
 
 if __name__ == '__main__':

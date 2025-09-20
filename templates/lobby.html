@@ -101,6 +101,7 @@
         let currentRoom = null;
         let playerName = null;
         let isRoomCreator = false;
+        let roomCreator = null;
 
         // Generate random room code
         function generateRoomCode() {
@@ -162,6 +163,9 @@
             // Update room creator status
             if (data.is_creator !== undefined) {
                 isRoomCreator = data.is_creator;
+                if (data.is_creator) {
+                    roomCreator = data.player_name;
+                }
             }
             
             updatePlayersList(data.players);
@@ -169,11 +173,17 @@
         });
 
         socket.on('player_list_updated', function(data) {
+            if (data.creator) {
+                roomCreator = data.creator;
+            }
             updatePlayersList(data.players);
             updateGameStatus(data.ready_to_start);
         });
 
         socket.on('player_left', function(data) {
+            if (data.creator) {
+                roomCreator = data.creator;
+            }
             updatePlayersList(data.players);
             updateGameStatus(data.ready_to_start);
         });
@@ -197,9 +207,18 @@
             players.forEach(player => {
                 const playerDiv = document.createElement('div');
                 playerDiv.className = 'flex items-center space-x-2 p-2 bg-gray-50 rounded-md';
+                
+                let displayName = player;
+                if (player === playerName) {
+                    displayName += ' (you)';
+                }
+                if (player === roomCreator) {
+                    displayName = '👑 ' + displayName;
+                }
+                
                 playerDiv.innerHTML = `
                     <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span class="text-gray-700">${player}</span>
+                    <span class="text-gray-700">${displayName}</span>
                 `;
                 playersList.appendChild(playerDiv);
             });
@@ -208,7 +227,7 @@
             document.getElementById('joinPanel').classList.add('hidden');
             document.getElementById('gamePanel').classList.remove('hidden');
             
-            document.getElementById('playersInRoomTitle').textContent = `Players in Room ${currentRoom}`;
+            document.getElementById('playersInRoomTitle').innerHTML = `Players in Room <span style="color: blue; text-decoration: underline;">${currentRoom}</span>`;
         }
 
         function updateGameStatus(readyToStart) {
