@@ -65,6 +65,32 @@
 
                 <h3 id="playersInRoomTitle" class="text-lg font-semibold text-gray-800 mb-4">Players in Room</h3>
                 <div id="playersList" class="space-y-2"></div>
+                
+                <!-- Settings Section -->
+                <div class="mt-6 border-t pt-4">
+                    <h4 class="text-md font-semibold text-gray-800 mb-3">Game Settings</h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Time Limit (seconds):</label>
+                            <span id="timeLimitDisplay" class="text-gray-900"></span>
+                            <input id="timeLimitInput" type="number" min="5" max="300" class="hidden w-full px-2 py-1 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Gamemode:</label>
+                            <span id="gamemodeDisplay" class="text-gray-900"></span>
+                            <select id="gamemodeSelect" class="hidden w-full px-2 py-1 border border-gray-300 rounded-md">
+                                <option value="normal">Normal</option>
+                                <option value="inverted">Inverted</option>
+                            </select>
+                        </div>
+                        <div id="settingsButtons" class="hidden space-x-2">
+                            <button id="editSettingsBtn" class="px-3 py-1 bg-gray-500 text-white rounded-md text-sm">Edit</button>
+                            <button id="saveSettingsBtn" class="hidden px-3 py-1 bg-blue-600 text-white rounded-md text-sm">Save</button>
+                            <button id="cancelSettingsBtn" class="hidden px-3 py-1 bg-gray-500 text-white rounded-md text-sm">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="gameStatus" class="mt-4 text-center text-sm text-gray-600"></div>
                 <div id="startGameSection" class="mt-4 hidden">
                     <button id="startGameBtn" 
@@ -102,6 +128,7 @@
         let playerName = null;
         let isRoomCreator = false;
         let roomCreator = null;
+        let currentSettings = {time_limit: 20, gamemode: 'normal'};
 
         // Generate random room code
         function generateRoomCode() {
@@ -155,6 +182,55 @@
             }
         });
 
+        // Settings event listeners
+        document.getElementById('editSettingsBtn').addEventListener('click', function() {
+            document.getElementById('timeLimitDisplay').classList.add('hidden');
+            document.getElementById('gamemodeDisplay').classList.add('hidden');
+            document.getElementById('timeLimitInput').classList.remove('hidden');
+            document.getElementById('gamemodeSelect').classList.remove('hidden');
+            document.getElementById('timeLimitInput').value = currentSettings.time_limit;
+            document.getElementById('gamemodeSelect').value = currentSettings.gamemode;
+            document.getElementById('editSettingsBtn').classList.add('hidden');
+            document.getElementById('saveSettingsBtn').classList.remove('hidden');
+            document.getElementById('cancelSettingsBtn').classList.remove('hidden');
+        });
+
+        document.getElementById('saveSettingsBtn').addEventListener('click', function() {
+            const newTimeLimit = parseInt(document.getElementById('timeLimitInput').value);
+            const newGamemode = document.getElementById('gamemodeSelect').value;
+            
+            if (newTimeLimit < 5 || newTimeLimit > 300) {
+                alert('Time limit must be between 5 and 300 seconds');
+                return;
+            }
+            
+            socket.emit('update_settings', {
+                room_code: currentRoom,
+                player_name: playerName,
+                settings: {time_limit: newTimeLimit, gamemode: newGamemode}
+            });
+            
+            // Hide inputs
+            document.getElementById('timeLimitDisplay').classList.remove('hidden');
+            document.getElementById('gamemodeDisplay').classList.remove('hidden');
+            document.getElementById('timeLimitInput').classList.add('hidden');
+            document.getElementById('gamemodeSelect').classList.add('hidden');
+            document.getElementById('editSettingsBtn').classList.remove('hidden');
+            document.getElementById('saveSettingsBtn').classList.add('hidden');
+            document.getElementById('cancelSettingsBtn').classList.add('hidden');
+        });
+
+        document.getElementById('cancelSettingsBtn').addEventListener('click', function() {
+            // Hide inputs
+            document.getElementById('timeLimitDisplay').classList.remove('hidden');
+            document.getElementById('gamemodeDisplay').classList.remove('hidden');
+            document.getElementById('timeLimitInput').classList.add('hidden');
+            document.getElementById('gamemodeSelect').classList.add('hidden');
+            document.getElementById('editSettingsBtn').classList.remove('hidden');
+            document.getElementById('saveSettingsBtn').classList.add('hidden');
+            document.getElementById('cancelSettingsBtn').classList.add('hidden');
+        });
+
         // Socket event listeners
         socket.on('player_joined', function(data) {
             document.getElementById('status').textContent = `Joined room as ${data.player_name}`;
@@ -168,6 +244,11 @@
                 }
             }
             
+            if (data.settings) {
+                currentSettings = data.settings;
+                updateSettingsDisplay();
+            }
+            
             updatePlayersList(data.players);
             updateGameStatus(data.ready_to_start);
         });
@@ -175,6 +256,10 @@
         socket.on('player_list_updated', function(data) {
             if (data.creator) {
                 roomCreator = data.creator;
+            }
+            if (data.settings) {
+                currentSettings = data.settings;
+                updateSettingsDisplay();
             }
             updatePlayersList(data.players);
             updateGameStatus(data.ready_to_start);
@@ -193,11 +278,18 @@
         });
 
         socket.on('game_started', function(data) {
-            window.location.href = `/game/${currentRoom}?player=${encodeURIComponent(playerName)}`;
+            const gamemode = data.settings ? data.settings.gamemode : 'normal';
+            const gameUrl = gamemode === 'inverted' ? `/inverted-game/${currentRoom}` : `/game/${currentRoom}`;
+            window.location.href = `${gameUrl}?player=${encodeURIComponent(playerName)}`;
         });
 
         socket.on('error', function(data) {
             alert(data.message);
+        });
+
+        socket.on('settings_updated', function(data) {
+            currentSettings = data.settings;
+            updateSettingsDisplay();
         });
 
         function updatePlayersList(players) {
@@ -244,6 +336,17 @@
                 startGameSection.classList.remove('hidden');
             } else {
                 startGameSection.classList.add('hidden');
+            }
+        }
+
+        function updateSettingsDisplay() {
+            document.getElementById('timeLimitDisplay').textContent = currentSettings.time_limit;
+            document.getElementById('gamemodeDisplay').textContent = currentSettings.gamemode.charAt(0).toUpperCase() + currentSettings.gamemode.slice(1);
+            
+            if (isRoomCreator) {
+                document.getElementById('settingsButtons').classList.remove('hidden');
+            } else {
+                document.getElementById('settingsButtons').classList.add('hidden');
             }
         }
 
