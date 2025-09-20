@@ -410,7 +410,7 @@ def start_game(room_code):
         }
         
         # Send game_started event to all players in the room
-        print(f"Starting normal game for room {room_code} with players: {[p['name'] for p in players]}")
+        print(f"Starting classic game for room {room_code} with players: {[p['name'] for p in players]}")
         print(f"Starting image: {starting_image}")
         
         game_started_data = {
