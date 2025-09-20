@@ -257,8 +257,8 @@ def start_game(room_code):
     
     # Always use stock1.svg for player 1
     # CHANGE THIS TO THE DOMAIN OF THE SERVER
-    domain = 'http://localhost:8000'
-    starting_image = f'{domain}/static/img/stock1.svg'
+    # domain = 'http://localhost:8000'
+    starting_image = f'static/img/stock1.svg'
     
     games[room_code] = {
         'id': game_id,

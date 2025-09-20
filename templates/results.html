@@ -42,9 +42,9 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
                             <!-- Image -->
-                            <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                            <div class="aspect-video bg-gray-100 rounded-lg overflow-hidden">
                                 {% if i < game.images|length and game.images[i] %}
                                 <img src="/{{ game.images[i].path }}" 
                                      alt="Generated image for round {{ i + 1 }}" 
@@ -60,13 +60,13 @@
                             </div>
 
                             <!-- Prompt -->
-                            <div class="flex flex-col justify-center">
-                                <h4 class="text-md font-medium text-gray-700 mb-2">Prompt:</h4>
-                                <div class="bg-gray-50 rounded-lg p-4">
+                            <div>
+                                <h4 class="text-2xl font-bold text-gray-700 mb-4">Prompt:</h4>
+                                <div class="bg-gray-50 rounded-lg p-6">
                                     {% if i < game.prompts|length and game.prompts[i] %}
-                                    <p class="text-gray-800 italic">"{{ game.prompts[i].text }}"</p>
+                                    <p class="text-4xl text-gray-800 italic font-medium leading-relaxed">"{{ game.prompts[i].text }}"</p>
                                     {% else %}
-                                    <p class="text-gray-500 italic">No prompt provided (timeout)</p>
+                                    <p class="text-4xl text-gray-500 italic font-medium">No prompt provided (timeout)</p>
                                     {% endif %}
                                 </div>
                             </div>
@@ -92,9 +92,9 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
                             <!-- Final Image -->
-                            <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                            <div class="aspect-video bg-gray-100 rounded-lg overflow-hidden">
                                 {% if game.images|length > 0 and game.images[-1] %}
                                 <img src="/{{ game.images[-1].path }}" 
                                      alt="Final generated image" 
@@ -110,11 +110,11 @@
                             </div>
 
                             <!-- Thank You Message -->
-                            <div class="flex flex-col justify-center">
-                                <h4 class="text-md font-medium text-gray-700 mb-2">Message:</h4>
-                                <div class="bg-green-50 rounded-lg p-4">
-                                    <p class="text-gray-800 text-lg font-medium">Thank you for playing!</p>
-                                    <p class="text-gray-600 text-sm mt-2">We hope you enjoyed the creative journey!</p>
+                            <div>
+                                <h4 class="text-2xl font-bold text-gray-700 mb-4">Message:</h4>
+                                <div class="bg-green-50 rounded-lg p-6">
+                                    <p class="text-4xl text-gray-800 font-bold leading-relaxed">Thank you for playing!</p>
+                                    <p class="text-2xl text-gray-600 font-medium mt-4">We hope you enjoyed the creative journey!</p>
                                 </div>
                             </div>
                         </div>
