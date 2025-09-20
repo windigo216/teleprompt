@@ -114,6 +114,26 @@
     </div>
 
     <script>
+        // Clear cache and cookies on page load
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    caches.delete(name);
+                }
+            });
+        }
+        
+        // Clear localStorage and sessionStorage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear cookies
+        document.cookie.split(";").forEach(function(c) { 
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        
+        console.log('🧹 Cache, cookies, and storage cleared on page load');
+        
         function copyRoomCode() {
             const roomCode = window.location.pathname.split('/').pop();
             navigator.clipboard.writeText(roomCode).then(() => {

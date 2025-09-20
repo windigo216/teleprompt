@@ -1,0 +1,14 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ocean" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#87ceeb;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#4682b4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#191970;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#ocean)"/>
+  <path d="M0,150 Q50,130 100,150 T200,150 T300,150 T400,150 L400,300 L0,300 Z" fill="#4169e1" opacity="0.7"/>
+  <path d="M0,180 Q50,160 100,180 T200,180 T300,180 T400,180 L400,300 L0,300 Z" fill="#0000cd" opacity="0.5"/>
+  <circle cx="100" cy="80" r="20" fill="#ffeb3b" opacity="0.8"/>
+  <text x="200" y="250" text-anchor="middle" fill="white" font-family="Arial" font-size="16">Ocean Waves</text>
+</svg>

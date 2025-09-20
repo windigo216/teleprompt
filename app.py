@@ -204,9 +204,8 @@ def handle_join_room(data):
             'is_my_turn': current_player == player_name
         })
     
-    # Start game if enough players
-    if len(rooms[room_code]) >= MIN_PLAYERS and room_code not in games:
-        start_game(room_code)
+    # Game no longer auto-starts at MIN_PLAYERS
+    # Room creator must manually start the game
 
 @socketio.on('start_game_manual')
 def handle_start_game_manual(data):
@@ -231,10 +230,33 @@ def handle_start_game_manual(data):
     # Start the game
     start_game(room_code)
 
+def get_random_static_image():
+    """Get a random image from the static/img folder"""
+    import random
+    import os
+    
+    static_img_dir = 'static/img'
+    if not os.path.exists(static_img_dir):
+        return '/static/img/placeholder.svg'
+    
+    # Get all image files from static/img
+    image_files = []
+    for file in os.listdir(static_img_dir):
+        if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg')):
+            image_files.append(f'/static/img/{file}')
+    
+    if not image_files:
+        return '/static/img/placeholder.svg'
+    
+    return random.choice(image_files)
+
 def start_game(room_code):
     """Initialize and start a new game"""
     players = rooms[room_code]
     game_id = str(uuid.uuid4())
+    
+    # Get a random starting image
+    starting_image = get_random_static_image()
     
     games[room_code] = {
         'id': game_id,
@@ -242,7 +264,7 @@ def start_game(room_code):
         'current_round': 0,
         'current_player': 0,
         'prompts': [],
-        'images': [],
+        'images': [{'path': starting_image, 'prompt': 'Starting image'}],
         'status': 'waiting_for_prompt',
         'start_time': time.time(),
         'round_start_time': time.time()
@@ -250,10 +272,13 @@ def start_game(room_code):
     
     # Send game_started event to all players in the room
     print(f"Starting game for room {room_code} with players: {[p['name'] for p in players]}")
+    print(f"Starting image: {starting_image}")
+    
     game_started_data = {
         'game_id': game_id,
         'players': [p['name'] for p in players],
-        'current_player': players[0]['name']
+        'current_player': players[0]['name'],
+        'starting_image': starting_image
     }
     print(f"Emitting game_started event: {game_started_data}")
     emit('game_started', game_started_data, room=room_code)

@@ -1,0 +1,16 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="forestSky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#87ceeb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#98fb98;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#forestSky)"/>
+  <polygon points="50,300 80,200 110,300" fill="#228b22"/>
+  <polygon points="100,300 130,180 160,300" fill="#32cd32"/>
+  <polygon points="150,300 180,220 210,300" fill="#228b22"/>
+  <polygon points="200,300 230,160 260,300" fill="#32cd32"/>
+  <polygon points="250,300 280,200 310,300" fill="#228b22"/>
+  <polygon points="300,300 330,180 360,300" fill="#32cd32"/>
+  <text x="200" y="250" text-anchor="middle" fill="white" font-family="Arial" font-size="16">Magical Forest</text>
+</svg>

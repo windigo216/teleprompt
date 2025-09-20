@@ -58,7 +58,7 @@
                 <div id="startGameSection" class="mt-4 hidden">
                     <button id="startGameBtn" 
                             class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
-                        Start Game Now
+                        Start Game with Random Image
                     </button>
                     <p class="text-xs text-gray-500 text-center mt-2">Room creator can start with any number of players</p>
                 </div>
@@ -66,6 +66,26 @@
     </div>
 
     <script>
+        // Clear cache and cookies on page load
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    caches.delete(name);
+                }
+            });
+        }
+        
+        // Clear localStorage and sessionStorage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear cookies
+        document.cookie.split(";").forEach(function(c) { 
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        
+        console.log('🧹 Cache, cookies, and storage cleared on page load');
+        
         const socket = io();
         let currentRoom = null;
         let playerName = null;
@@ -181,20 +201,15 @@
             const startGameSection = document.getElementById('startGameSection');
             const playerCount = document.getElementById('playersList').children.length;
             
-            if (readyToStart) {
-                statusDiv.textContent = 'Ready to start! Game will begin automatically...';
-                statusDiv.className = 'mt-4 text-center text-sm text-green-600';
-                startGameSection.classList.add('hidden');
+            // Game no longer auto-starts, so always show manual start option
+            statusDiv.textContent = `Players in room: ${playerCount}`;
+            statusDiv.className = 'mt-4 text-center text-sm text-gray-600';
+            
+            // Show start button for room creator if there are at least 2 players
+            if (isRoomCreator && playerCount >= 2) {
+                startGameSection.classList.remove('hidden');
             } else {
-                statusDiv.textContent = `Waiting for players... (${playerCount}/4)`;
-                statusDiv.className = 'mt-4 text-center text-sm text-gray-600';
-                
-                // Show start button for room creator if there are at least 2 players
-                if (isRoomCreator && playerCount >= 2) {
-                    startGameSection.classList.remove('hidden');
-                } else {
-                    startGameSection.classList.add('hidden');
-                }
+                startGameSection.classList.add('hidden');
             }
         }
     </script>

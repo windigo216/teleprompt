@@ -100,6 +100,26 @@
     </div>
 
     <script>
+        // Clear cache and cookies on page load
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    caches.delete(name);
+                }
+            });
+        }
+        
+        // Clear localStorage and sessionStorage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear cookies
+        document.cookie.split(";").forEach(function(c) { 
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        
+        console.log('🧹 Cache, cookies, and storage cleared on page load');
+        
         const socket = io();
         const roomCode = '{{ room_code }}';
         let currentPlayer = null;
@@ -107,12 +127,8 @@
         let timer = null;
         const PROMPT_TIMEOUT = 20; // seconds
 
-        // Get player name from localStorage or prompt
-        let playerName = localStorage.getItem('playerName');
-        if (!playerName) {
-            playerName = prompt('Enter your name:');
-            localStorage.setItem('playerName', playerName);
-        }
+        // Get player name from prompt (no localStorage since we cleared it)
+        let playerName = prompt('Enter your name:');
         
 
         // Join room
@@ -126,12 +142,30 @@
             console.log('🎮 game_started received:', {
                 data: data,
                 myPlayerName: playerName,
-                currentPlayer: data.current_player
+                currentPlayer: data.current_player,
+                startingImage: data.starting_image
             });
             updateGameProgress(data.players);
+            
+            // Display the starting image
+            if (data.starting_image) {
+                console.log('🖼️ Displaying starting image:', data.starting_image);
+                updateCurrentImage(data.starting_image);
+            } else {
+                console.log('⚠️ No starting image provided');
+            }
+            
             // Calculate if it's my turn based on current player
             const isMyTurn = data.current_player === playerName;
             console.log('🎯 Calculated isMyTurn:', isMyTurn, '(current_player:', data.current_player, '=== myPlayerName:', playerName, ')');
+            console.log('🔍 String comparison details:', {
+                currentPlayer: data.current_player,
+                myPlayerName: playerName,
+                currentPlayerType: typeof data.current_player,
+                myPlayerNameType: typeof playerName,
+                areEqual: data.current_player === playerName,
+                strictEqual: data.current_player === playerName
+            });
             checkIfMyTurn(data.current_player, isMyTurn);
             // Start timer for first player when game starts
             if (isMyTurn) {
@@ -197,22 +231,37 @@
                 myPlayerName: playerName,
                 isMyTurn: isMyTurn,
                 isMyTurnOverride: isMyTurnOverride,
-                comparison: `${player} === ${playerName} = ${player === playerName}`
+                comparison: `${player} === ${playerName} = ${player === playerName}`,
+                playerType: typeof player,
+                playerNameType: typeof playerName
+            });
+            
+            // Check if elements exist
+            const waitingMessage = document.getElementById('waitingMessage');
+            const promptSection = document.getElementById('promptSection');
+            const promptInput = document.getElementById('promptInput');
+            
+            console.log('🔍 DOM elements:', {
+                waitingMessage: !!waitingMessage,
+                promptSection: !!promptSection,
+                promptInput: !!promptInput
             });
             
             if (isMyTurn) {
                 console.log('✅ Showing prompt input for player');
-                document.getElementById('waitingMessage').classList.add('hidden');
-                document.getElementById('promptSection').classList.remove('hidden');
-                document.getElementById('promptInput').focus();
+                if (waitingMessage) waitingMessage.classList.add('hidden');
+                if (promptSection) promptSection.classList.remove('hidden');
+                if (promptInput) promptInput.focus();
             } else {
                 console.log('⏳ Showing waiting message for player');
-                document.getElementById('waitingMessage').classList.remove('hidden');
-                document.getElementById('promptSection').classList.add('hidden');
-                document.getElementById('waitingMessage').innerHTML = `
-                    <div class="text-4xl mb-2">👤</div>
-                    <p>Waiting for <strong>${player}</strong> to submit their prompt...</p>
-                `;
+                if (waitingMessage) {
+                    waitingMessage.classList.remove('hidden');
+                    waitingMessage.innerHTML = `
+                        <div class="text-4xl mb-2">👤</div>
+                        <p>Waiting for <strong>${player}</strong> to submit their prompt...</p>
+                    `;
+                }
+                if (promptSection) promptSection.classList.add('hidden');
             }
         }
 

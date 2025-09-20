@@ -1,0 +1,13 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ffa500;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4ecdc4;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#sky)"/>
+  <circle cx="200" cy="80" r="40" fill="#ffeb3b" opacity="0.9"/>
+  <polygon points="0,200 50,150 100,180 150,160 200,190 250,170 300,200 350,180 400,200 400,300 0,300" fill="#2e7d32"/>
+  <text x="200" y="250" text-anchor="middle" fill="white" font-family="Arial" font-size="16">Beautiful Sunset</text>
+</svg>
