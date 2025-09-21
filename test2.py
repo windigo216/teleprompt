@@ -75,7 +75,6 @@ def describe_and_save_image(image_path, text_filename="image_description.txt"):
         return description
     return None
 
-# Usage example
 if __name__ == "__main__":
     # Describe an image and save the text
     image_path = "scribbles.png"  # Replace with your image path
