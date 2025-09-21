@@ -11,17 +11,27 @@
             background-color: #7c6bca;
         }
     </style>
+    <link rel="icon" href="static/img/Teleprompt.io ICON.ico" type="image/x-icon">
 </head>
-<body class="min-h-screen gradient-bg">
+<body class="min-h-screen gradient-bg flex items-center justify-center">
     <!-- Moving Emoji Mesh Canvas -->
     <canvas id="emojiMesh" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;pointer-events:none;"></canvas>
     <div class="container mx-auto px-4 py-8" style="position:relative;z-index:1;">
         <div class="max-w-md mx-auto bg-white rounded-lg shadow-xl p-8">
             <div id="joinPanel">
-                <div class="text-center mb-8">
-                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Teleprompt</h1>
+                <style>
+                    .comic-sans {
+                        font-family: 'Comic Sans MS', 'Comic Sans', cursive;
+                    }
+                </style>
+                <div class="text-center mb-8 comic-sans">
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">
+                        <img src="/static/img/Teleprompt.io_logo.png" alt="Teleprompt" class="mx-auto" style="height:200px;">
+                    </h1>
                     <p class="text-gray-600">AI-powered telephone prompting with friends</p>
                 </div>
+
+                <hr class="my-6 border-gray-300">
 
                 <!-- Name and Create Game -->
                 <div class="space-y-4">
@@ -58,14 +68,18 @@
             </div>
 
             <div id="gamePanel" class="hidden">
-                <div class="text-center mb-8">
-                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Teleprompt</h1>
+                <div class="text-center mb-8 comic-sans">
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">
+                        <img src="/static/img/Teleprompt.io_logo.png" alt="Teleprompt" class="mx-auto" style="height:200px;">
+                    </h1>
                     <p class="text-gray-600">AI-powered telephone prompting with friends</p>
                 </div>
 
+                <hr class="my-6 border-gray-300">
+
                 <div id="playersInRoomTitle" class="flex justify-between items-center text-lg font-semibold text-gray-800 mb-4">
                     <span>Players in Room:</span>
-                    <span>ID: <span id="roomCodeDisplay" class="text-blue-600 underline cursor-pointer hover:text-blue-800"></span></span>
+                    <span>Room ID: <span id="roomCodeDisplay" class="text-blue-600 underline cursor-pointer hover:text-blue-800"></span></span>
                 </div>
                 <div id="playersList" class="space-y-2"></div>
                 
@@ -342,8 +356,6 @@
             const playerCount = document.getElementById('playersList').children.length;
             
             // Game no longer auto-starts, so always show manual start option
-            statusDiv.textContent = `Players in room: ${playerCount}`;
-            statusDiv.className = 'mt-4 text-center text-sm text-gray-600';
             
             // Show start button for room creator if there are at least 2 players
             if (isRoomCreator && playerCount >= 2) {
