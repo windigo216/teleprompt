@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teleprompt - Inverted Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+        .gradient-bg {
+            background-color: #7c6bca;
+        }
+        .pulse-animation {
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .color-preset {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .color-preset:hover {
+            transform: scale(1.1);
+        }
+        .color-preset.active {
+            border-color: #374151;
+            box-shadow: 0 0 0 2px #ffffff;
+        }
+        .tool-button {
+            transition: all 0.2s ease;
+        }
+        .tool-button.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .tool-button:hover {
+            background-color: #e5e7eb;
+        }
+        .tool-button.active:hover {
+            background-color: #2563eb;
+        }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg">
+    <!-- Moving Emoji Mesh Canvas -->
+    <canvas id="emojiMesh" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;pointer-events:none;"></canvas>
+    <div class="container mx-auto px-4 py-8" style="position:relative;z-index:1;">
+        <div class="max-w-6xl mx-auto">
+            <!-- Header -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <div class="flex justify-between items-center">
+                    <h1 class="text-2xl font-bold text-gray-800">Teleprompt Inverted Game</h1>
+                    <div class="text-sm text-gray-600">
+                        Room: <span id="roomCode" class="font-mono font-bold">{{ room_code }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Area -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Text Display -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Current Description</h2>
+                    <div id="textContainer" class="aspect-square bg-gray-100 rounded-lg flex items-center justify-center p-4">
+                        <div id="textPlaceholder" class="text-gray-500 text-center">
+                            <div class="text-4xl mb-2">📝</div>
+                            <p>Waiting for description...</p>
+                        </div>
+                        <div id="processingWheel" class="hidden text-center">
+                            <div class="inline-block animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+                            <p class="mt-4 text-gray-600 font-medium">Processing drawing...</p>
+                            <p id="processingPlayer" class="text-sm text-gray-500"></p>
+                        </div>
+                        <div id="currentText" class="hidden w-full h-full flex items-center justify-center">
+                            <p id="textContent" class="text-lg text-gray-800 text-center font-medium"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Drawing Canvas -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h2 class="text-lg font-semibold text-gray-800 mb-4">Your Turn</h2>
+                    
+                    <div id="waitingMessage" class="text-center text-gray-600 py-8">
+                        <div class="text-4xl mb-2">⏳</div>
+                        <p>Waiting for your turn...</p>
+                    </div>
+
+                    <div id="drawingSection" class="hidden">
+                        <!-- Drawing Tools -->
+                        <div class="mb-4">
+                            <div class="flex space-x-2 mb-3">
+                                <button id="markerTool" class="tool-button active flex-1 px-3 py-2 rounded-md border border-gray-300 text-sm font-medium">
+                                    🖊️ Marker
+                                </button>
+                                <button id="eraserTool" class="tool-button flex-1 px-3 py-2 rounded-md border border-gray-300 text-sm font-medium">
+                                    🧽 Eraser
+                                </button>
+                            </div>
+                            
+                            <!-- Color Picker -->
+                            <div class="flex items-center space-x-2 mb-3">
+                                <input type="color" id="colorPicker" value="#000000" class="w-8 h-8 rounded-md border border-gray-300 cursor-pointer">
+                                <div class="flex space-x-1">
+                                    <div class="color-preset active" style="background-color: #000000;" data-color="#000000"></div>
+                                    <div class="color-preset" style="background-color: #ef4444;" data-color="#ef4444"></div>
+                                    <div class="color-preset" style="background-color: #f97316;" data-color="#f97316"></div>
+                                    <div class="color-preset" style="background-color: #eab308;" data-color="#eab308"></div>
+                                    <div class="color-preset" style="background-color: #22c55e;" data-color="#22c55e"></div>
+                                    <div class="color-preset" style="background-color: #3b82f6;" data-color="#3b82f6"></div>
+                                    <div class="color-preset" style="background-color: #8b5cf6;" data-color="#8b5cf6"></div>
+                                </div>
+                            </div>
+                            
+                            <!-- Size Control -->
+                            <div class="mb-3">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Size</label>
+                                <input type="range" id="sizeSlider" min="1" max="20" value="5" class="w-full">
+                                <div class="flex justify-between text-xs text-gray-500">
+                                    <span>1px</span>
+                                    <span id="sizeValue">5px</span>
+                                    <span>20px</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Canvas -->
+                        <div class="border-2 border-gray-300 rounded-lg overflow-hidden mb-4">
+                            <canvas id="drawingCanvas" width="400" height="300" class="w-full h-auto bg-white cursor-crosshair" style="max-height: 300px;"></canvas>
+                        </div>
+
+                        <!-- Timer and Submit -->
+                        <div class="mb-4">
+                            <div class="flex justify-between items-center text-sm text-gray-600">
+                                <span>Time remaining:</span>
+                                <span id="timeRemaining" class="font-mono font-bold text-red-600">20s</span>
+                            </div>
+                            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-1000" style="width: 100%"></div>
+                            </div>
+                        </div>
+
+                        <div class="flex space-x-2">
+                            <button id="clearCanvas" class="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                                Clear
+                            </button>
+                            <button id="submitDrawing" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                                Submit Drawing
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game Progress -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Game Progress</h3>
+                    <div id="gameProgress" class="space-y-2">
+                        <!-- Progress will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const roomCode = '{{ room_code }}';
+        let currentPlayer = null;
+        let timeRemaining = 20;
+        let timer = null;
+        const PROMPT_TIMEOUT = 20; // seconds
+
+        // Get player name from URL parameters (passed from lobby)
+        const urlParams = new URLSearchParams(window.location.search);
+        let playerName = urlParams.get('player') || 'Anonymous';
+        
+        console.log('🚀 Inverted game page loaded');
+        console.log('🚀 Room code:', roomCode);
+        console.log('🚀 Player name:', playerName);
+        console.log('🚀 Socket connected:', socket.connected);
+        
+        // Socket connection events
+        socket.on('connect', function() {
+            console.log('✅ Socket connected!');
+        });
+        
+        socket.on('disconnect', function() {
+            console.log('❌ Socket disconnected!');
+        });
+        
+        socket.on('connect_error', function(error) {
+            console.log('❌ Socket connection error:', error);
+        });
+        
+        // Canvas setup
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let currentTool = 'marker';
+        let currentColor = '#000000';
+        let currentSize = 5;
+
+        // Initialize canvas
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Join room
+        console.log('🚀 Emitting join_room with:', { player_name: playerName, room_code: roomCode });
+        socket.emit('join_room', {
+            player_name: playerName,
+            room_code: roomCode
+        });
+
+        // Request current game state if game is already running
+        console.log('🚀 Emitting get_game_state with:', { room_code: roomCode, player_name: playerName });
+        socket.emit('get_game_state', {
+            room_code: roomCode,
+            player_name: playerName
+        });
+
+        // Socket event listeners
+        socket.on('game_started', function(data) {
+            console.log('🎮 game_started received:', {
+                data: data,
+                myPlayerName: playerName,
+                currentPlayer: data.current_player,
+                startingImage: data.starting_image,
+                startingPrompt: data.starting_prompt
+            });
+            updateGameProgress(data.players);
+            
+            // Set timeout from settings
+            const timeout = data.settings ? data.settings.time_limit : 20;
+            
+            // For inverted mode, show starting prompt for first player to draw
+            if (data.starting_prompt) {
+                console.log('📝 Displaying starting prompt for inverted mode:', data.starting_prompt);
+                updateCurrentText(data.starting_prompt);
+            } else if (data.starting_image) {
+                console.log('🖼️ Displaying starting image:', data.starting_image);
+                updateCurrentText(data.starting_image);
+            } else {
+                console.log('⚠️ No starting content provided');
+            }
+            
+            // Calculate if it's my turn based on current player
+            const isMyTurn = data.current_player === playerName;
+            console.log('🎯 Calculated isMyTurn:', isMyTurn, 'current_player:', data.current_player, 'myPlayerName:', playerName);
+            console.log('🚨 About to call checkIfMyTurn with:', data.current_player, isMyTurn);
+            checkIfMyTurn(data.current_player, isMyTurn);
+            
+            // Start timer for first player when game starts
+            if (isMyTurn) {
+                console.log('⏰ Starting timer for first player');
+                startTimer(timeout);
+            } else {
+                console.log('⏸️ Not my turn, not starting timer');
+            }
+        });
+
+        socket.on('game_state_update_inverted', function(data) {
+            console.log('🎮 game_state_update_inverted received:', data);
+            updateCurrentText(data.description);
+            updateGameProgress(data.players);
+            
+            // Use the is_my_turn flag from the server
+            const isMyTurn = data.is_my_turn;
+            console.log('🎯 game_state_update_inverted - isMyTurn:', isMyTurn);
+            checkIfMyTurn(data.current_player, isMyTurn);
+            
+            // Start timer if it's my turn
+            if (isMyTurn) {
+                console.log('⏰ Starting timer from game state update');
+                startTimer(data.timeout);
+            }
+        });
+
+        socket.on('next_turn_inverted', function(data) {
+            hideProcessingWheel();
+            updateCurrentText(data.description);
+            updateGameProgress();
+            
+            // Calculate if it's my turn based on current player
+            const isMyTurn = data.current_player === playerName;
+            console.log('next_turn_inverted - Calculated isMyTurn:', isMyTurn);
+            checkIfMyTurn(data.current_player, isMyTurn);
+            
+            // Only start timer if start_timer flag is true and it's my turn
+            if (data.start_timer && isMyTurn) {
+                console.log('Starting timer for next player');
+                startTimer(data.timeout);
+            }
+        });
+
+        socket.on('image_processing', function(data) {
+            showProcessingWheel(data.player, data.message);
+        });
+
+        socket.on('image_processing_error', function(data) {
+            hideProcessingWheel();
+            alert('Image processing failed: ' + data.error);
+        });
+
+        socket.on('game_completed', function(data) {
+            // Redirect to results page
+            window.location.href = `/results/${roomCode}`;
+        });
+
+        socket.on('error', function(data) {
+            alert(data.message);
+        });
+
+        function checkIfMyTurn(player, isMyTurnOverride) {
+            console.log('🚨 checkIfMyTurn function called!', {
+                player: player,
+                isMyTurnOverride: isMyTurnOverride,
+                playerName: playerName
+            });
+            
+            currentPlayer = player;
+            const isMyTurn = isMyTurnOverride !== undefined ? isMyTurnOverride : (player === playerName);
+            
+            console.log('🔍 checkIfMyTurn called:', {
+                currentPlayer: player,
+                myPlayerName: playerName,
+                isMyTurn: isMyTurn,
+                isMyTurnOverride: isMyTurnOverride
+            });
+            
+            // Check if elements exist
+            const waitingMessage = document.getElementById('waitingMessage');
+            const drawingSection = document.getElementById('drawingSection');
+            
+            console.log('🔍 DOM elements found:', {
+                waitingMessage: !!waitingMessage,
+                drawingSection: !!drawingSection
+            });
+            
+            if (isMyTurn) {
+                console.log('✅ Showing drawing section for player');
+                if (waitingMessage) waitingMessage.classList.add('hidden');
+                if (drawingSection) drawingSection.classList.remove('hidden');
+            } else {
+                console.log('⏳ Showing waiting message for player');
+                if (waitingMessage) {
+                    waitingMessage.classList.remove('hidden');
+                    waitingMessage.innerHTML = `
+                        <div class="text-4xl mb-2">👤</div>
+                        <p>Waiting for <strong>${player}</strong> to submit their drawing...</p>
+                    `;
+                }
+                if (drawingSection) drawingSection.classList.add('hidden');
+            }
+        }
+
+        function updateCurrentText(description) {
+            const textContainer = document.getElementById('textContainer');
+            const placeholder = document.getElementById('textPlaceholder');
+            const currentText = document.getElementById('currentText');
+            const textContent = document.getElementById('textContent');
+            const processingWheel = document.getElementById('processingWheel');
+            
+            // Hide processing wheel
+            processingWheel.classList.add('hidden');
+            
+            if (description) {
+                textContent.textContent = description;
+                currentText.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+            } else {
+                currentText.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+            }
+        }
+
+        function updateGameProgress(players) {
+            const progressDiv = document.getElementById('gameProgress');
+            if (players) {
+                progressDiv.innerHTML = players.map((player, index) => `
+                    <div class="flex items-center space-x-3 p-2 bg-gray-50 rounded-md">
+                        <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-sm font-bold text-blue-600">
+                            ${index + 1}
+                        </div>
+                        <span class="text-gray-700">${player}</span>
+                        <div class="ml-auto">
+                            <span class="text-sm text-gray-500">Round ${index + 1}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function showProcessingWheel(player, message) {
+            // Hide other elements
+            document.getElementById('textPlaceholder').classList.add('hidden');
+            document.getElementById('currentText').classList.add('hidden');
+            
+            // Show processing wheel
+            document.getElementById('processingWheel').classList.remove('hidden');
+            document.getElementById('processingPlayer').textContent = `${player} is processing...`;
+        }
+
+        function hideProcessingWheel() {
+            document.getElementById('processingWheel').classList.add('hidden');
+        }
+
+        function startTimer(seconds) {
+            timeRemaining = seconds;
+            clearInterval(timer);
+            
+            timer = setInterval(() => {
+                timeRemaining--;
+                document.getElementById('timeRemaining').textContent = `${timeRemaining}s`;
+                
+                const progress = (timeRemaining / seconds) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timer);
+                    handleTimeout();
+                }
+            }, 1000);
+        }
+
+        function handleTimeout() {
+            if (currentPlayer === playerName) {
+                socket.emit('timeout_drawing', {
+                    room_code: roomCode
+                });
+            }
+        }
+
+        // Drawing functionality
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+        
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath();
+        }
+        
+        function draw(e) {
+            if (!isDrawing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            
+            if (currentTool === 'marker') {
+                ctx.lineWidth = currentSize;
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = currentColor;
+            } else if (currentTool === 'eraser') {
+                ctx.lineWidth = currentSize * 2;
+                ctx.globalCompositeOperation = 'destination-out';
+            }
+            
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        // Canvas event listeners
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            const mouseEvent = new MouseEvent('mousedown', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const mouseEvent = new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY
+            });
+            canvas.dispatchEvent(mouseEvent);
+        });
+        
+        canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            const mouseEvent = new MouseEvent('mouseup', {});
+            canvas.dispatchEvent(mouseEvent);
+        });
+
+        // Tool selection
+        document.getElementById('markerTool').addEventListener('click', () => {
+            currentTool = 'marker';
+            document.getElementById('markerTool').classList.add('active');
+            document.getElementById('eraserTool').classList.remove('active');
+        });
+        
+        document.getElementById('eraserTool').addEventListener('click', () => {
+            currentTool = 'eraser';
+            document.getElementById('eraserTool').classList.add('active');
+            document.getElementById('markerTool').classList.remove('active');
+        });
+
+        // Color picker
+        document.getElementById('colorPicker').addEventListener('change', (e) => {
+            currentColor = e.target.value;
+        });
+
+        // Color presets
+        document.querySelectorAll('.color-preset').forEach(preset => {
+            preset.addEventListener('click', () => {
+                document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
+                preset.classList.add('active');
+                currentColor = preset.dataset.color;
+                document.getElementById('colorPicker').value = currentColor;
+            });
+        });
+
+        // Size slider
+        document.getElementById('sizeSlider').addEventListener('input', (e) => {
+            currentSize = parseInt(e.target.value);
+            document.getElementById('sizeValue').textContent = currentSize + 'px';
+        });
+
+        // Clear canvas
+        document.getElementById('clearCanvas').addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear the canvas?')) {
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        });
+
+        // Submit drawing
+        document.getElementById('submitDrawing').addEventListener('click', function() {
+            const imageData = canvas.toDataURL('image/png');
+            
+            socket.emit('submit_drawing', {
+                room_code: roomCode,
+                player_name: playerName,
+                image_data: imageData
+            });
+            
+            // Hide drawing section and show waiting message
+            document.getElementById('drawingSection').classList.add('hidden');
+            document.getElementById('waitingMessage').classList.remove('hidden');
+            clearInterval(timer);
+        });
+
+        // Emoji Mesh Physics Simulation
+        const emojiCanvas = document.getElementById('emojiMesh');
+        const emojiCtx = emojiCanvas.getContext('2d');
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        emojiCanvas.width = width;
+        emojiCanvas.height = height;
+        const phoneEmoji = '📞';
+        const brainEmoji = '🧠';
+        const gridCols = Math.floor(width / 70)+1;
+        const gridRows = Math.floor(height / 70)+1;
+        const spacing = 69;
+        const mesh = [];
+        const springs = [];
+        let mouse = {x: -1000, y: -1000};
+        // Node structure: {x, y, vx, vy, baseX, baseY, emoji}
+        for (let r = 0; r < gridRows; r++) {
+            for (let c = 0; c < gridCols; c++) {
+                mesh.push({
+                    x: c * spacing + spacing/2,
+                    y: r * spacing + spacing/2,
+                    vx: 0,
+                    vy: 0,
+                    baseX: c * spacing + spacing/2,
+                    baseY: r * spacing + spacing/2,
+                    emoji: (r + c) % 2 === 0 ? phoneEmoji : brainEmoji
+                });
+            }
+        }
+        // Connect springs (adjacent nodes)
+        function nodeIdx(r, c) { return r * gridCols + c; }
+        for (let r = 0; r < gridRows; r++) {
+            for (let c = 0; c < gridCols; c++) {
+                let idx = nodeIdx(r, c);
+                if (c < gridCols - 1) springs.push([idx, nodeIdx(r, c+1)]);
+                if (r < gridRows - 1) springs.push([idx, nodeIdx(r+1, c)]);
+            }
+        }
+        // Mouse interaction
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+        window.addEventListener('mouseleave', () => {
+            mouse.x = -1000; mouse.y = -1000;
+        });
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            emojiCanvas.width = width;
+            emojiCanvas.height = height;
+        });
+        function stepPhysics() {
+            // Spring forces
+            for (const [i, j] of springs) {
+                const a = mesh[i], b = mesh[j];
+                const dx = b.x - a.x, dy = b.y - a.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                const rest = spacing;
+                const force = 0.02 * (dist - rest); // reduced spring force for slower movement
+                const fx = force * dx / (dist || 1);
+                const fy = force * dy / (dist || 1);
+                a.vx += fx; a.vy += fy;
+                b.vx -= fx; b.vy -= fy;
+            }
+            // Jiggle/ripple
+            for (const node of mesh) {
+                // Restore to base position
+                const dx = node.baseX - node.x;
+                const dy = node.baseY - node.y;
+                node.vx += 0.004 * dx + (Math.random()-0.5)*0.02; // slower restoration and less random jiggle
+                node.vy += 0.004 * dy + (Math.random()-0.5)*0.02;
+                // Mouse repulsion
+                const mx = node.x - mouse.x;
+                const my = node.y - mouse.y;
+                const mdist = Math.sqrt(mx*mx + my*my);
+                if (mdist < 120) {
+                    const repulse = 2 * (1 - mdist/120);
+                    node.vx += repulse * mx/(mdist||1);
+                    node.vy += repulse * my/(mdist||1);
+                }
+                // Damping
+                node.vx *= 0.75;
+                node.vy *= 0.75;
+                node.x += node.vx;
+                node.y += node.vy;
+            }
+        }
+        function drawMesh() {
+            emojiCtx.clearRect(0, 0, width, height);
+            emojiCtx.font = '40px serif';
+            emojiCtx.textAlign = 'center';
+            emojiCtx.textBaseline = 'middle';
+            emojiCtx.save();
+            emojiCtx.globalAlpha = 0.5; // half transparency for all emojis
+            for (const node of mesh) {
+                emojiCtx.fillText(node.emoji, node.x, node.y);
+            }
+            emojiCtx.restore();
+        }
+        function animate() {
+            stepPhysics();
+            drawMesh();
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body>
+</html>

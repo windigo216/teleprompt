@@ -8,7 +8,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
     <style>
         .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-color: #7c6bca;
         }
     </style>
 </head>
@@ -17,55 +17,93 @@
     <canvas id="emojiMesh" style="position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:0;pointer-events:none;"></canvas>
     <div class="container mx-auto px-4 py-8" style="position:relative;z-index:1;">
         <div class="max-w-md mx-auto bg-white rounded-lg shadow-xl p-8">
-            <div class="text-center mb-8">
-                <h1 class="text-3xl font-bold text-gray-800 mb-2">🎨 Teleprompt</h1>
-                <p class="text-gray-600">AI-powered drawing game with friends</p>
-            </div>
+            <div id="joinPanel">
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Teleprompt</h1>
+                    <p class="text-gray-600">AI-powered telephone prompting with friends</p>
+                </div>
 
-            <form id="joinForm" class="space-y-4">
-                <div>
-                    <label for="playerName" class="block text-sm font-medium text-gray-700 mb-2">Your Name</label>
+                <!-- Name and Create Game -->
+                <div class="space-y-4">
+                    <label for="playerName" class="block text-sm font-medium text-gray-700 mb-2">Name:</label>
                     <input type="text" id="playerName" name="playerName" 
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                            placeholder="Enter your name" required>
+                    <button id="createRoomBtn" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                        Create Game
+                    </button>
                 </div>
 
-                <div>
-                    <label for="roomCode" class="block text-sm font-medium text-gray-700 mb-2">Room Code</label>
+                <!-- OR separator -->
+                <div class="flex items-center my-6">
+                    <div class="flex-grow h-px bg-gray-300"></div>
+                    <span class="mx-4 text-gray-500 font-bold">OR</span>
+                    <div class="flex-grow h-px bg-gray-300"></div>
+                </div>
+
+                <!-- Room Code and Join Game -->
+                <form id="joinForm" class="space-y-4">
+                    <label for="roomCode" class="block text-sm font-medium text-gray-700 mb-2">Room Code:</label>
                     <input type="text" id="roomCode" name="roomCode" 
                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                            placeholder="Enter room code" required>
-                </div>
+                    <button type="submit" 
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
+                        Join Game
+                    </button>
+                </form>
 
-                <button type="submit" 
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
-                    Join Game
-                </button>
-            </form>
-
-            <div class="mt-6 text-center">
-                <button id="createRoomBtn" 
-                        class="text-blue-600 hover:text-blue-800 font-medium">
-                    Create New Room
-                </button>
+                <div id="status" class="mt-4 text-center text-sm text-gray-600 hidden"></div>
             </div>
 
-            <div id="status" class="mt-4 text-center text-sm text-gray-600 hidden"></div>
-        </div>
+            <div id="gamePanel" class="hidden">
+                <div class="text-center mb-8">
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2">Teleprompt</h1>
+                    <p class="text-gray-600">AI-powered telephone prompting with friends</p>
+                </div>
 
-            <div id="gameInfo" class="max-w-md mx-auto mt-4 bg-white rounded-lg shadow-lg p-6 hidden">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">Players in Room</h3>
+                <div id="playersInRoomTitle" class="flex justify-between items-center text-lg font-semibold text-gray-800 mb-4">
+                    <span>Players in Room:</span>
+                    <span>ID: <span id="roomCodeDisplay" class="text-blue-600 underline cursor-pointer hover:text-blue-800"></span></span>
+                </div>
                 <div id="playersList" class="space-y-2"></div>
+                
+                <!-- Settings Section -->
+                <div class="mt-6 border-t pt-4">
+                    <h4 class="text-md font-semibold text-gray-800 mb-3">Game Settings</h4>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Time Limit (seconds):</label>
+                            <span id="timeLimitDisplay" class="text-gray-900"></span>
+                            <input id="timeLimitInput" type="number" min="5" max="300" class="hidden w-full px-2 py-1 border border-gray-300 rounded-md">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Gamemode:</label>
+                            <span id="gamemodeDisplay" class="text-gray-900"></span>
+                            <select id="gamemodeSelect" class="hidden w-full px-2 py-1 border border-gray-300 rounded-md">
+                                <option value="classic">Classic</option>
+                                <option value="inverted">Inverted</option>
+                            </select>
+                        </div>
+                        <div id="settingsButtons" class="hidden space-x-2">
+                            <button id="editSettingsBtn" class="px-3 py-1 bg-gray-500 text-white rounded-md text-sm">Edit</button>
+                            <button id="saveSettingsBtn" class="hidden px-3 py-1 bg-blue-600 text-white rounded-md text-sm">Save</button>
+                            <button id="cancelSettingsBtn" class="hidden px-3 py-1 bg-gray-500 text-white rounded-md text-sm">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="gameStatus" class="mt-4 text-center text-sm text-gray-600"></div>
                 <div id="startGameSection" class="mt-4 hidden">
                     <button id="startGameBtn" 
                             class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-200">
-                        Start Game with Random Image
+                        Start Game!
                     </button>
                     <p class="text-xs text-gray-500 text-center mt-2">Room creator can start with any number of players</p>
                 </div>
             </div>
-    </div>
+        </div>
 
     <script>
         // Clear cache and cookies on page load
@@ -92,10 +130,21 @@
         let currentRoom = null;
         let playerName = null;
         let isRoomCreator = false;
+        let roomCreator = null;
+        let currentSettings = {time_limit: 20, gamemode: 'classic'};
 
         // Generate random room code
         function generateRoomCode() {
             return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        // Copy to clipboard function
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function() {
+                alert('Room ID copied to clipboard!');
+            }, function(err) {
+                console.error('Could not copy text: ', err);
+            });
         }
 
         // Join room
@@ -145,6 +194,55 @@
             }
         });
 
+        // Settings event listeners
+        document.getElementById('editSettingsBtn').addEventListener('click', function() {
+            document.getElementById('timeLimitDisplay').classList.add('hidden');
+            document.getElementById('gamemodeDisplay').classList.add('hidden');
+            document.getElementById('timeLimitInput').classList.remove('hidden');
+            document.getElementById('gamemodeSelect').classList.remove('hidden');
+            document.getElementById('timeLimitInput').value = currentSettings.time_limit;
+            document.getElementById('gamemodeSelect').value = currentSettings.gamemode;
+            document.getElementById('editSettingsBtn').classList.add('hidden');
+            document.getElementById('saveSettingsBtn').classList.remove('hidden');
+            document.getElementById('cancelSettingsBtn').classList.remove('hidden');
+        });
+
+        document.getElementById('saveSettingsBtn').addEventListener('click', function() {
+            const newTimeLimit = parseInt(document.getElementById('timeLimitInput').value);
+            const newGamemode = document.getElementById('gamemodeSelect').value;
+            
+            if (newTimeLimit < 5 || newTimeLimit > 300) {
+                alert('Time limit must be between 5 and 300 seconds');
+                return;
+            }
+            
+            socket.emit('update_settings', {
+                room_code: currentRoom,
+                player_name: playerName,
+                settings: {time_limit: newTimeLimit, gamemode: newGamemode}
+            });
+            
+            // Hide inputs
+            document.getElementById('timeLimitDisplay').classList.remove('hidden');
+            document.getElementById('gamemodeDisplay').classList.remove('hidden');
+            document.getElementById('timeLimitInput').classList.add('hidden');
+            document.getElementById('gamemodeSelect').classList.add('hidden');
+            document.getElementById('editSettingsBtn').classList.remove('hidden');
+            document.getElementById('saveSettingsBtn').classList.add('hidden');
+            document.getElementById('cancelSettingsBtn').classList.add('hidden');
+        });
+
+        document.getElementById('cancelSettingsBtn').addEventListener('click', function() {
+            // Hide inputs
+            document.getElementById('timeLimitDisplay').classList.remove('hidden');
+            document.getElementById('gamemodeDisplay').classList.remove('hidden');
+            document.getElementById('timeLimitInput').classList.add('hidden');
+            document.getElementById('gamemodeSelect').classList.add('hidden');
+            document.getElementById('editSettingsBtn').classList.remove('hidden');
+            document.getElementById('saveSettingsBtn').classList.add('hidden');
+            document.getElementById('cancelSettingsBtn').classList.add('hidden');
+        });
+
         // Socket event listeners
         socket.on('player_joined', function(data) {
             document.getElementById('status').textContent = `Joined room as ${data.player_name}`;
@@ -153,6 +251,14 @@
             // Update room creator status
             if (data.is_creator !== undefined) {
                 isRoomCreator = data.is_creator;
+                if (data.is_creator) {
+                    roomCreator = data.player_name;
+                }
+            }
+            
+            if (data.settings) {
+                currentSettings = data.settings;
+                updateSettingsDisplay();
             }
             
             updatePlayersList(data.players);
@@ -160,11 +266,21 @@
         });
 
         socket.on('player_list_updated', function(data) {
+            if (data.creator) {
+                roomCreator = data.creator;
+            }
+            if (data.settings) {
+                currentSettings = data.settings;
+                updateSettingsDisplay();
+            }
             updatePlayersList(data.players);
             updateGameStatus(data.ready_to_start);
         });
 
         socket.on('player_left', function(data) {
+            if (data.creator) {
+                roomCreator = data.creator;
+            }
             updatePlayersList(data.players);
             updateGameStatus(data.ready_to_start);
         });
@@ -174,11 +290,18 @@
         });
 
         socket.on('game_started', function(data) {
-            window.location.href = `/game/${currentRoom}?player=${encodeURIComponent(playerName)}`;
+            const gamemode = data.settings ? data.settings.gamemode : 'classic';
+            const gameUrl = gamemode === 'inverted' ? `/inverted-game/${currentRoom}` : `/game/${currentRoom}`;
+            window.location.href = `${gameUrl}?player=${encodeURIComponent(playerName)}`;
         });
 
         socket.on('error', function(data) {
             alert(data.message);
+        });
+
+        socket.on('settings_updated', function(data) {
+            currentSettings = data.settings;
+            updateSettingsDisplay();
         });
 
         function updatePlayersList(players) {
@@ -188,14 +311,29 @@
             players.forEach(player => {
                 const playerDiv = document.createElement('div');
                 playerDiv.className = 'flex items-center space-x-2 p-2 bg-gray-50 rounded-md';
+                
+                let displayName = player;
+                if (player === playerName) {
+                    displayName += ' (you)';
+                }
+                if (player === roomCreator) {
+                    displayName = '👑 ' + displayName;
+                }
+                
                 playerDiv.innerHTML = `
                     <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span class="text-gray-700">${player}</span>
+                    <span class="text-gray-700">${displayName}</span>
                 `;
                 playersList.appendChild(playerDiv);
             });
             
-            document.getElementById('gameInfo').classList.remove('hidden');
+            // Hide join panel and show game panel
+            document.getElementById('joinPanel').classList.add('hidden');
+            document.getElementById('gamePanel').classList.remove('hidden');
+            
+            // Update room code display
+            document.getElementById('roomCodeDisplay').textContent = currentRoom;
+            document.getElementById('roomCodeDisplay').setAttribute('onclick', `copyToClipboard('${currentRoom}')`);
         }
 
         function updateGameStatus(readyToStart) {
@@ -215,6 +353,17 @@
             }
         }
 
+        function updateSettingsDisplay() {
+            document.getElementById('timeLimitDisplay').textContent = currentSettings.time_limit;
+            document.getElementById('gamemodeDisplay').textContent = currentSettings.gamemode.charAt(0).toUpperCase() + currentSettings.gamemode.slice(1);
+            
+            if (isRoomCreator) {
+                document.getElementById('settingsButtons').classList.remove('hidden');
+            } else {
+                document.getElementById('settingsButtons').classList.add('hidden');
+            }
+        }
+
         // Emoji Mesh Physics Simulation
         const canvas = document.getElementById('emojiMesh');
         const ctx = canvas.getContext('2d');
@@ -224,9 +373,9 @@
         canvas.height = height;
         const phoneEmoji = '📞';
         const brainEmoji = '🧠';
-        const gridCols = Math.floor(width / 70);
+        const gridCols = Math.floor(width / 70)+1;
         const gridRows = Math.floor(height / 70)+1;
-        const spacing = 70;
+        const spacing = 69;
         const mesh = [];
         const springs = [];
         let mouse = {x: -1000, y: -1000};
