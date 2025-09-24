@@ -18,6 +18,7 @@
             50% { opacity: 0.5; }
         }
     </style>
+    <link rel="icon" href="static/img/Teleprompt.io ICON.ico" type="image/x-icon">
 </head>
 <body class="min-h-screen gradient-bg">
     <!-- Moving Emoji Mesh Canvas -->
@@ -27,9 +28,10 @@
             <!-- Header -->
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
                 <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-bold text-gray-800">Teleprompt Classic Game</h1>
+                    <img src="/static/img/Teleprompt.io ICON.ico" alt="Teleprompt Icon" class="w-8 h-8 mr-3 inline-block align-middle">
+                    <h1 class="text-2xl font-bold text-gray-800 inline-block align-middle">Teleprompt Classic Game</h1>
                     <div class="text-sm text-gray-600">
-                        Room: <span id="roomCode" class="font-mono font-bold">{{ room_code }}</span>
+                        Room ID: <span id="roomCode" class="font-mono font-bold">{{ room_code }}</span>
                     </div>
                 </div>
             </div>
@@ -108,6 +110,7 @@
         let timeRemaining = 20;
         let timer = null;
         const PROMPT_TIMEOUT = 20; // seconds
+        let isMyTurn = false;
 
         // Get player name from URL parameters (passed from lobby)
         const urlParams = new URLSearchParams(window.location.search);
@@ -133,14 +136,6 @@
             // Set timeout from settings
             const timeout = data.settings ? data.settings.time_limit : 20;
             
-            // Display the starting image
-            if (data.starting_image) {
-                console.log('🖼️ Displaying starting image:', data.starting_image);
-                updateCurrentImage(data.starting_image);
-            } else {
-                console.log('⚠️ No starting image provided');
-            }
-            
             // Calculate if it's my turn based on current player
             const isMyTurn = data.current_player === playerName;
             console.log('🎯 Calculated isMyTurn:', isMyTurn, '(current_player:', data.current_player, '=== myPlayerName:', playerName, ')');
@@ -153,6 +148,17 @@
                 strictEqual: data.current_player === playerName
             });
             checkIfMyTurn(data.current_player, isMyTurn);
+            // Display the starting image only if it's my turn
+            if (isMyTurn && data.starting_image) {
+                console.log('🖼️ Displaying starting image:', data.starting_image);
+                updateCurrentImage(data.starting_image);
+            } else if (!isMyTurn) {
+                console.log('⏳ Not my turn, showing waiting message for starting image');
+                updateCurrentImage(null); // This will show the waiting message
+            } else {
+                console.log('⚠️ No starting image provided');
+            }
+            
             // Start timer for first player when game starts
             if (isMyTurn) {
                 console.log('⏰ Starting timer for first player');
@@ -163,14 +169,14 @@
         });
 
         socket.on('game_state_update', function(data) {
-            updateCurrentImage(data.image);
-            updateGameProgress(data.players);
             // Use the is_my_turn flag from the server instead of calculating it
             if (data.is_my_turn !== undefined) {
                 checkIfMyTurn(data.current_player, data.is_my_turn);
             } else {
                 checkIfMyTurn(data.current_player);
             }
+            updateCurrentImage(data.image);
+            updateGameProgress(data.players);
             // Don't start timer on game state update - only when image is fully generated
         });
 
@@ -185,12 +191,17 @@
 
         socket.on('next_turn', function(data) {
             hideLoadingWheel();
-            updateCurrentImage(data.image);
-            updateGameProgress();
             // Calculate if it's my turn based on current player
             const isMyTurn = data.current_player === playerName;
             console.log('next_turn - Calculated isMyTurn:', isMyTurn);
             checkIfMyTurn(data.current_player, isMyTurn);
+            // Display the image only if it's my turn
+            if (isMyTurn) {
+                updateCurrentImage(data.image);
+            } else {
+                updateCurrentImage(null); // Show waiting message
+            }
+            updateGameProgress();
             
             // Only start timer if start_timer flag is true and it's my turn
             if (data.start_timer && isMyTurn) {
@@ -210,7 +221,7 @@
 
         function checkIfMyTurn(player, isMyTurnOverride) {
             currentPlayer = player;
-            const isMyTurn = isMyTurnOverride !== undefined ? isMyTurnOverride : (player === playerName);
+            isMyTurn = isMyTurnOverride !== undefined ? isMyTurnOverride : (player === playerName);
             
             console.log('🔍 checkIfMyTurn called:', {
                 currentPlayer: player,
@@ -260,13 +271,24 @@
             // Hide loading wheel
             loadingWheel.classList.add('hidden');
             
-            if (imagePath) {
+            if (imagePath && isMyTurn) {
                 image.src = `/${imagePath}`;
                 image.classList.remove('hidden');
                 placeholder.classList.add('hidden');
+            } else if (!isMyTurn) {
+                image.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                placeholder.innerHTML = `
+                    <div class="text-4xl mb-2">⏳</div>
+                    <p>Please wait, other players are prompting...</p>
+                `;
             } else {
                 image.classList.add('hidden');
                 placeholder.classList.remove('hidden');
+                placeholder.innerHTML = `
+                    <div class="text-4xl mb-2">🖼️</div>
+                    <p>Waiting for image...</p>
+                `;
             }
         }
 
